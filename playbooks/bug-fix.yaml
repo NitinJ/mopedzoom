@@ -1,0 +1,26 @@
+id: bug-fix
+summary: "Triage and fix a bug, produce a PR"
+triggers: ["fix", "bug", "broken", "error in"]
+requires_worktree: true
+permission_mode: bypass
+inputs:
+  - name: repo
+    required: true
+    prompt: "Which repo?"
+  - name: issue_ref
+    required: true
+    prompt: "Issue URL, number, or description?"
+stages:
+  - name: pre-design
+    requires: "Analyze bug, root cause, proposed fix, touched files"
+    produces: pre-design.md
+    approval: required
+  - name: implement
+    requires: "Write code, run tests, commit atomically"
+    produces: commits
+    approval: on-completion
+    timeout: 30m
+  - name: open-pr
+    requires: "Push branch and open PR with summary body"
+    produces: pr_url
+    approval: none

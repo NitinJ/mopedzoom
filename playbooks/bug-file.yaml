@@ -1,0 +1,21 @@
+id: bug-file
+summary: "Triage a bug and file a structured GitHub issue"
+triggers: ["file a bug", "report bug", "new issue"]
+requires_worktree: false
+permission_mode: bypass
+inputs:
+  - name: repo
+    required: true
+    prompt: "Which repo?"
+  - name: description
+    required: true
+    prompt: "Describe the bug"
+stages:
+  - name: draft
+    requires: "Write a structured issue body: summary, repro, expected, actual, env"
+    produces: draft-issue.md
+    approval: required
+  - name: file
+    requires: "Run gh issue create with the approved body; capture issue URL"
+    produces: issue_url
+    approval: none
