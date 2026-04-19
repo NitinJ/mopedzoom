@@ -12,13 +12,9 @@ async def client(tmp_path):
     db = StateDB(str(tmp_path / "s.db"))
     await db.connect()
     await db.migrate()
-    await db.insert_task(
-        Task(channel="cli", user_ref="u", playbook_id="bug-fix", inputs={})
-    )
+    await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="bug-fix", inputs={}))
     app = create_app(db)
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as c:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c, db
     await db.close()
 

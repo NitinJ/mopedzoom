@@ -29,9 +29,7 @@ class Router:
             return deterministic
         if self.client is None:
             return None
-        descriptions = "\n".join(
-            f"- {p.id}: {p.summary}" for p in self.registry.values()
-        )
+        descriptions = "\n".join(f"- {p.id}: {p.summary}" for p in self.registry.values())
         prompt = (
             f"Request: {text}\n\nPlaybooks:\n{descriptions}\n\n"
             "Pick exactly one, or null if none fit."

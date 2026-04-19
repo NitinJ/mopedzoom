@@ -11,9 +11,7 @@ def make_pb(pid, summary, triggers):
         id=pid,
         summary=summary,
         triggers=triggers,
-        stages=[
-            StageSpec(name="x", requires="do", produces="x.md", approval="none")
-        ],
+        stages=[StageSpec(name="x", requires="do", produces="x.md", approval="none")],
     )
 
 
@@ -21,9 +19,7 @@ def make_pb(pid, summary, triggers):
 def reg():
     return {
         "bug-fix": make_pb("bug-fix", "Fix a bug", ["fix", "bug"]),
-        "research": make_pb(
-            "research", "Research a topic", ["research", "investigate"]
-        ),
+        "research": make_pb("research", "Research a topic", ["research", "investigate"]),
     }
 
 

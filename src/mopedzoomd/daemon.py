@@ -52,14 +52,10 @@ class TaskManager:
         existing = await self.db.get_stages(task_id)
         if not existing:
             for i, st in enumerate(pb.stages):
-                await self.db.insert_stage(
-                    Stage(task_id=task_id, idx=i, name=st.name)
-                )
+                await self.db.insert_stage(Stage(task_id=task_id, idx=i, name=st.name))
 
         await self.db.set_task_status(task_id, TaskStatus.RUNNING)
-        await self.db.log_event(
-            TaskEvent(task_id=task_id, kind="task_started", detail={})
-        )
+        await self.db.log_event(TaskEvent(task_id=task_id, kind="task_started", detail={}))
 
         channel = self.channels[task.channel]
         cwd = str(scratch.dir)  # TODO: worktree if pb.requires_worktree
@@ -90,9 +86,7 @@ class TaskManager:
                     raise
 
         await self.db.set_task_status(task_id, TaskStatus.DELIVERED)
-        await self.db.log_event(
-            TaskEvent(task_id=task_id, kind="task_delivered", detail={})
-        )
+        await self.db.log_event(TaskEvent(task_id=task_id, kind="task_delivered", detail={}))
         await channel.post(OutboundMessage(task_id=task_id, body="\U0001f680 delivered"))
 
     async def _run_stage(
@@ -110,9 +104,7 @@ class TaskManager:
     ) -> str | None:
         await self.db.update_stage(task_id, idx, status=StageStatus.RUNNING)
         await self.db.log_event(
-            TaskEvent(
-                task_id=task_id, kind="stage_started", detail={"stage": sspec.name}
-            )
+            TaskEvent(task_id=task_id, kind="stage_started", detail={"stage": sspec.name})
         )
         agents = self.agent_discoverer()
         if sspec.agent:
@@ -173,9 +165,7 @@ class TaskManager:
         )
         if result.exit_code != 0 or not result.deliverable:
             await self.db.set_task_status(task_id, TaskStatus.FAILED)
-            await channel.post(
-                OutboundMessage(task_id=task_id, body=f"Stage {sspec.name} failed")
-            )
+            await channel.post(OutboundMessage(task_id=task_id, body=f"Stage {sspec.name} failed"))
             await self.db.log_event(
                 TaskEvent(
                     task_id=task_id,
@@ -273,9 +263,7 @@ async def resolve_interaction(db: StateDB, *, task_id: int, answer: str) -> None
         await db.set_task_status(task_id, TaskStatus.PAUSED)
     elif answer == "resume":
         await db.set_task_status(task_id, TaskStatus.RUNNING)
-    await db.log_event(
-        TaskEvent(task_id=task_id, kind=f"resolved_{answer}", detail={})
-    )
+    await db.log_event(TaskEvent(task_id=task_id, kind=f"resolved_{answer}", detail={}))
 
 
 # ---------------------------------------------------------------------------

@@ -16,9 +16,7 @@ def test_load_playbooks_dedup(tmp_path):
     user_dir = tmp_path / "u"
     user_dir.mkdir()
     (user_dir / "sample.yaml").write_text(
-        (FIX / "sample.yaml").read_text().replace(
-            "Sample playbook for tests", "User override"
-        )
+        (FIX / "sample.yaml").read_text().replace("Sample playbook for tests", "User override")
     )
     reg = load_playbooks(builtin_dir=FIX, user_dir=user_dir)
     assert reg["sample"].summary == "User override"

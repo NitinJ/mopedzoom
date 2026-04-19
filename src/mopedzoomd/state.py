@@ -187,14 +187,11 @@ class _TaskMixin:
         if statuses:
             placeholders = ",".join("?" * len(statuses))
             rows = await self.fetch_all(
-                f"SELECT * FROM tasks WHERE status IN ({placeholders}) "
-                "ORDER BY id DESC LIMIT ?",
+                f"SELECT * FROM tasks WHERE status IN ({placeholders}) ORDER BY id DESC LIMIT ?",
                 tuple(s.value for s in statuses) + (limit,),
             )
         else:
-            rows = await self.fetch_all(
-                "SELECT * FROM tasks ORDER BY id DESC LIMIT ?", (limit,)
-            )
+            rows = await self.fetch_all("SELECT * FROM tasks ORDER BY id DESC LIMIT ?", (limit,))
         return [_row_to_task(r) for r in rows]
 
     async def insert_stage(self, s: Stage) -> None:
@@ -204,9 +201,7 @@ class _TaskMixin:
         )
 
     async def get_stages(self, tid: int) -> list[Stage]:
-        rows = await self.fetch_all(
-            "SELECT * FROM stages WHERE task_id=? ORDER BY idx", (tid,)
-        )
+        rows = await self.fetch_all("SELECT * FROM stages WHERE task_id=? ORDER BY idx", (tid,))
         return [_row_to_stage(r) for r in rows]
 
     async def update_stage(self, tid: int, idx: int, **fields) -> None:
@@ -283,9 +278,7 @@ class _MiscMixin:
         return _row_to_worktree(r) if r else None
 
     async def set_worktree_state(self, tid: int, state: WorktreeState) -> None:
-        await self.execute(
-            "UPDATE worktrees SET state=? WHERE task_id=?", (state.value, tid)
-        )
+        await self.execute("UPDATE worktrees SET state=? WHERE task_id=?", (state.value, tid))
 
     async def record_agent_pick(self, p: AgentPick) -> None:
         await self.execute(
@@ -315,9 +308,7 @@ class _MiscMixin:
         )
 
     async def list_events(self, tid: int) -> list[TaskEvent]:
-        rows = await self.fetch_all(
-            "SELECT * FROM task_events WHERE task_id=? ORDER BY id", (tid,)
-        )
+        rows = await self.fetch_all("SELECT * FROM task_events WHERE task_id=? ORDER BY id", (tid,))
         return [
             TaskEvent(
                 id=r["id"],

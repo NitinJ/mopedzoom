@@ -40,9 +40,7 @@ class Playbook(BaseModel):
         return cls.model_validate(yaml.safe_load(path.read_text()))
 
 
-def load_playbooks(
-    builtin_dir: Path | None, user_dir: Path | None
-) -> dict[str, Playbook]:
+def load_playbooks(builtin_dir: Path | None, user_dir: Path | None) -> dict[str, Playbook]:
     """Load playbooks from builtin_dir then user_dir; user entries override builtins."""
     reg: dict[str, Playbook] = {}
     for d in (builtin_dir, user_dir):

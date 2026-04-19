@@ -39,6 +39,4 @@ def test_init_mentions_key_steps(init_md):
 def test_shared_readme_exists():
     # accept either _shared.md or README.md
     candidates = [COMMANDS / "_shared.md", COMMANDS / "README.md"]
-    assert any(c.exists() for c in candidates), (
-        "expected commands/_shared.md or commands/README.md"
-    )
+    assert any(c.exists() for c in candidates), "expected commands/_shared.md or commands/README.md"

@@ -54,7 +54,16 @@ class CLISocketChannel(Channel):
                 )
                 if self._handler:
                     await self._handler(inbound)
-            elif op in {"status", "tasks", "cancel", "resume", "edit", "logs", "ui", "show-playbook"}:
+            elif op in {
+                "status",
+                "tasks",
+                "cancel",
+                "resume",
+                "edit",
+                "logs",
+                "ui",
+                "show-playbook",
+            }:
                 # v1: minimal ack; full dispatcher is wired by the daemon.
                 reply["ok"] = True
                 for k in ("id", "stage"):

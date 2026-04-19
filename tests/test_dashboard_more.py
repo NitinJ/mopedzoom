@@ -17,11 +17,7 @@ async def client(tmp_path):
             id="pb",
             summary="s",
             triggers=["t"],
-            stages=[
-                StageSpec(
-                    name="x", requires="r", produces="x.md", approval="none"
-                )
-            ],
+            stages=[StageSpec(name="x", requires="r", produces="x.md", approval="none")],
         )
     }
     app = create_app(
@@ -29,9 +25,7 @@ async def client(tmp_path):
         playbook_registry=reg,
         agent_discoverer=lambda: ["coder", "reviewer"],
     )
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://t"
-    ) as c:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
         yield c
     await db.close()
 

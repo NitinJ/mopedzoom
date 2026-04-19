@@ -15,14 +15,10 @@ from pathlib import Path
 from typing import Any
 
 
-def _allowlist_match(
-    patterns: list[str], tool_name: str, input_json: dict[str, Any]
-) -> bool:
+def _allowlist_match(patterns: list[str], tool_name: str, input_json: dict[str, Any]) -> bool:
     candidate = input_json.get("command", "") or input_json.get("path", "") or ""
     probe = f"{tool_name} {candidate}".strip()
-    return any(
-        fnmatch.fnmatch(probe, p) or fnmatch.fnmatch(candidate, p) for p in patterns
-    )
+    return any(fnmatch.fnmatch(probe, p) or fnmatch.fnmatch(candidate, p) for p in patterns)
 
 
 async def handle_permission_request(
@@ -46,9 +42,7 @@ async def handle_permission_request(
     scratch_dir.mkdir(parents=True, exist_ok=True)
     req_path = scratch_dir / "permission.json"
     resp_path = scratch_dir / "permission_response.json"
-    req_path.write_text(
-        json.dumps({"tool_name": tool_name, "input": input_json})
-    )
+    req_path.write_text(json.dumps({"tool_name": tool_name, "input": input_json}))
     try:
         deadline = asyncio.get_event_loop().time() + timeout_s
         while asyncio.get_event_loop().time() < deadline:

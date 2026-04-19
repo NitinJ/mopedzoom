@@ -46,9 +46,7 @@ async def test_question_routed_to_channel(tmp_path):
         worktree_mgr=None,
         agent_discoverer=lambda: [],
     )
-    tid = await db.insert_task(
-        Task(channel="cli", user_ref="u", playbook_id="p", inputs={})
-    )
+    tid = await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="p", inputs={}))
     task = asyncio.create_task(tm.run_task(tid))
     for _ in range(50):
         t = await db.get_task(tid)

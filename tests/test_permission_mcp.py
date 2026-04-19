@@ -36,9 +36,7 @@ async def test_permission_writes_and_waits(tmp_path):
             if (scratch / "permission.json").exists():
                 break
             await asyncio.sleep(0.05)
-        (scratch / "permission_response.json").write_text(
-            json.dumps({"decision": "deny"})
-        )
+        (scratch / "permission_response.json").write_text(json.dumps({"decision": "deny"}))
 
     result, _ = await asyncio.gather(caller(), responder())
     assert result["behavior"] == "deny"

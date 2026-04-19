@@ -59,9 +59,7 @@ async def test_happy_path_two_stages(setup):
         worktree_mgr=None,
         agent_discoverer=lambda: ["coder"],
     )
-    tid = await db.insert_task(
-        Task(channel="cli", user_ref="u", playbook_id="pb", inputs={})
-    )
+    tid = await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="pb", inputs={}))
     await tm.run_task(tid)
     final = await db.get_task(tid)
     assert final.status == TaskStatus.DELIVERED

@@ -7,9 +7,7 @@ async def test_resolve_approve_sets_running(tmp_path):
     db = StateDB(str(tmp_path / "s.db"))
     await db.connect()
     await db.migrate()
-    tid = await db.insert_task(
-        Task(channel="cli", user_ref="u", playbook_id="p", inputs={})
-    )
+    tid = await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="p", inputs={}))
     await db.set_task_status(tid, TaskStatus.AWAITING_APPROVAL)
     await db.insert_interaction(
         Interaction(
@@ -30,9 +28,7 @@ async def test_resolve_cancel_sets_cancelled(tmp_path):
     db = StateDB(str(tmp_path / "s.db"))
     await db.connect()
     await db.migrate()
-    tid = await db.insert_task(
-        Task(channel="cli", user_ref="u", playbook_id="p", inputs={})
-    )
+    tid = await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="p", inputs={}))
     await db.set_task_status(tid, TaskStatus.AWAITING_APPROVAL)
     await db.insert_interaction(
         Interaction(
@@ -52,9 +48,7 @@ async def test_resolve_revise_sets_awaiting_input(tmp_path):
     db = StateDB(str(tmp_path / "s.db"))
     await db.connect()
     await db.migrate()
-    tid = await db.insert_task(
-        Task(channel="cli", user_ref="u", playbook_id="p", inputs={})
-    )
+    tid = await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="p", inputs={}))
     await db.set_task_status(tid, TaskStatus.AWAITING_APPROVAL)
     await db.insert_interaction(
         Interaction(
@@ -74,9 +68,7 @@ async def test_resolve_pause_resume(tmp_path):
     db = StateDB(str(tmp_path / "s.db"))
     await db.connect()
     await db.migrate()
-    tid = await db.insert_task(
-        Task(channel="cli", user_ref="u", playbook_id="p", inputs={})
-    )
+    tid = await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="p", inputs={}))
     await db.set_task_status(tid, TaskStatus.RUNNING)
     await db.insert_interaction(
         Interaction(

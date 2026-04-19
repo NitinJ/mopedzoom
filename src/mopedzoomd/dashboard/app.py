@@ -25,9 +25,7 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     async def index(req: Request):
         tasks = await db.list_tasks(limit=50)
-        return TEMPLATES.TemplateResponse(
-            req, "index.html", {"tasks": tasks}
-        )
+        return TEMPLATES.TemplateResponse(req, "index.html", {"tasks": tasks})
 
     @app.get("/tasks/{tid}", response_class=HTMLResponse)
     async def task_detail(tid: int, req: Request):
@@ -43,23 +41,17 @@ def create_app(
     @app.get("/fragments/tasks", response_class=HTMLResponse)
     async def tasks_fragment(req: Request):
         tasks = await db.list_tasks(limit=50)
-        return TEMPLATES.TemplateResponse(
-            req, "fragment_tasks.html", {"tasks": tasks}
-        )
+        return TEMPLATES.TemplateResponse(req, "fragment_tasks.html", {"tasks": tasks})
 
     @app.get("/agents", response_class=HTMLResponse)
     async def agents_view(req: Request):
         agents = discover()
-        return TEMPLATES.TemplateResponse(
-            req, "agents.html", {"agents": agents}
-        )
+        return TEMPLATES.TemplateResponse(req, "agents.html", {"agents": agents})
 
     @app.get("/playbooks", response_class=HTMLResponse)
     async def playbooks_view(req: Request):
         pbs = list(registry.values())
-        return TEMPLATES.TemplateResponse(
-            req, "playbooks.html", {"playbooks": pbs}
-        )
+        return TEMPLATES.TemplateResponse(req, "playbooks.html", {"playbooks": pbs})
 
     @app.get("/health")
     async def health():

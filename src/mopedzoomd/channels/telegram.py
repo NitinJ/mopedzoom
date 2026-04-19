@@ -42,9 +42,7 @@ class TelegramChannel(Channel):
     def set_handler(self, handler) -> None:
         self._handler = handler
 
-    def bind_task_topic(
-        self, *, task_id: int, thread_id: int, playbook_id: str, repo: str
-    ) -> None:
+    def bind_task_topic(self, *, task_id: int, thread_id: int, playbook_id: str, repo: str) -> None:
         self._topics[task_id] = _TopicBinding(thread_id, playbook_id, repo)
 
     async def start(self) -> None:
@@ -74,9 +72,7 @@ class TelegramChannel(Channel):
         if msg.buttons:
             rows = [
                 [
-                    InlineKeyboardButton(
-                        b.label, callback_data=f"{msg.task_id}:{b.callback}"
-                    )
+                    InlineKeyboardButton(b.label, callback_data=f"{msg.task_id}:{b.callback}")
                     for b in msg.buttons
                 ]
             ]
@@ -136,6 +132,4 @@ class TelegramChannel(Channel):
         return ft.message_thread_id
 
     async def close_topic(self, thread_id: int) -> None:
-        await self._bot.close_forum_topic(
-            chat_id=self.chat_id, message_thread_id=thread_id
-        )
+        await self._bot.close_forum_topic(chat_id=self.chat_id, message_thread_id=thread_id)

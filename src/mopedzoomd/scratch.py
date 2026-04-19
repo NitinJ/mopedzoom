@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+
 class ScratchDir:
     def __init__(self, runs_root: str, task_id: int):
         self.runs_root = Path(runs_root)
@@ -23,16 +24,26 @@ class ScratchDir:
     def deliverable_manifest_path(self, idx: int, name: str) -> Path:
         return self.dir / f"{idx}-{name}.deliverable.json"
 
-    def write_deliverable(self, stage_idx: int, stage_name: str,
-                          status: str, artifacts: list[dict[str, Any]],
-                          notes: str = "") -> None:
+    def write_deliverable(
+        self,
+        stage_idx: int,
+        stage_name: str,
+        status: str,
+        artifacts: list[dict[str, Any]],
+        notes: str = "",
+    ) -> None:
         p = self.deliverable_manifest_path(stage_idx, stage_name)
-        p.write_text(json.dumps({
-            "stage": stage_name,
-            "status": status,
-            "artifacts": artifacts,
-            "notes": notes,
-        }, indent=2))
+        p.write_text(
+            json.dumps(
+                {
+                    "stage": stage_name,
+                    "status": status,
+                    "artifacts": artifacts,
+                    "notes": notes,
+                },
+                indent=2,
+            )
+        )
 
     def read_deliverable(self, stage_idx: int, stage_name: str) -> dict[str, Any] | None:
         p = self.deliverable_manifest_path(stage_idx, stage_name)
