@@ -1,0 +1,26 @@
+# mopedzoomd systemd user unit template.
+#
+# {{PLUGIN_PATH}} is substituted at install time by scripts/install.sh (or by
+# /mopedzoom:init) with the absolute path to the plugin checkout
+# (typically $HOME/workspace/mopedzoom).
+#
+# Install location: ~/.config/systemd/user/mopedzoomd.service
+# Manage with: systemctl --user {enable,start,status,restart} mopedzoomd
+
+[Unit]
+Description=mopedzoom Claude-agent orchestrator
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.mopedzoom
+Environment=PYTHONUNBUFFERED=1
+Environment=MOPEDZOOM_STATE=%h/.mopedzoom
+ExecStart={{PLUGIN_PATH}}/.venv/bin/mopedzoomd
+Restart=on-failure
+RestartSec=3
+StandardOutput=append:%h/.mopedzoom/logs/mopedzoomd.log
+StandardError=append:%h/.mopedzoom/logs/mopedzoomd.log
+
+[Install]
+WantedBy=default.target
