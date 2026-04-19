@@ -1,0 +1,22 @@
+id: research
+summary: "Research a topic and produce a markdown report"
+triggers: ["research", "investigate", "look into", "dig into"]
+requires_worktree: false
+permission_mode: bypass
+inputs:
+  - name: topic
+    required: true
+    prompt: "What topic?"
+stages:
+  - name: pre-brief
+    requires: "Scope the research: sources, depth, key questions"
+    produces: pre-brief.md
+    approval: required
+  - name: research
+    requires: "Perform the research; produce a detailed markdown report with citations"
+    produces: report.md
+    approval: on-completion
+  - name: publish
+    requires: "Commit report to the configured research repo/path"
+    produces: commit_sha
+    approval: none

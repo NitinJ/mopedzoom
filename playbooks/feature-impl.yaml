@@ -1,0 +1,33 @@
+id: feature-impl
+summary: "Plan, design, and implement a new feature end-to-end"
+triggers: ["feature", "implement", "build", "add support for"]
+requires_worktree: true
+permission_mode: bypass
+inputs:
+  - name: repo
+    required: true
+    prompt: "Which repo?"
+  - name: description
+    required: true
+    prompt: "What's the feature?"
+stages:
+  - name: pre-design
+    requires: "High-level pre-design: goals, approach, scope, risks"
+    produces: pre-design.md
+    approval: required
+  - name: design-doc
+    requires: "Write the design doc (commits to docs/superpowers/specs/)"
+    produces: design.md
+    approval: required
+  - name: impl-plan
+    requires: "Write a task-by-task implementation plan"
+    produces: plan.md
+    approval: required
+  - name: implement
+    requires: "Execute the plan; commit each task"
+    produces: commits
+    approval: on-completion
+  - name: open-pr
+    requires: "Push branch and open PR"
+    produces: pr_url
+    approval: none
