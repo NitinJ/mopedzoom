@@ -1,0 +1,18 @@
+id: sample
+summary: "Sample playbook for tests"
+triggers: ["sample", "test"]
+requires_worktree: false
+permission_mode: bypass
+inputs:
+  - name: topic
+    required: true
+    prompt: "Topic?"
+stages:
+  - name: draft
+    requires: "draft markdown"
+    produces: draft.md
+    approval: required
+  - name: finalize
+    requires: "finalize"
+    produces: report.md
+    approval: none
