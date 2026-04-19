@@ -6,7 +6,18 @@ from pathlib import Path
 
 import aiosqlite
 
-from .models import Stage, StageStatus, Task, TaskStatus
+from .models import (
+    AgentPick,
+    Interaction,
+    InteractionKind,
+    Stage,
+    StageStatus,
+    Task,
+    TaskEvent,
+    TaskStatus,
+    Worktree,
+    WorktreeState,
+)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY);
@@ -219,3 +230,106 @@ class _TaskMixin:
 for _name in dir(_TaskMixin):
     if not _name.startswith("_"):
         setattr(StateDB, _name, getattr(_TaskMixin, _name))
+
+
+def _row_to_int(r) -> Interaction:
+    return Interaction(
+        id=r["id"],
+        task_id=r["task_id"],
+        stage_idx=r["stage_idx"],
+        kind=InteractionKind(r["kind"]),
+        prompt=r["prompt"],
+        posted_to_channel_ref=r["posted_to_channel_ref"],
+        created_at=datetime.fromisoformat(r["created_at"]),
+    )
+
+
+def _row_to_worktree(r) -> Worktree:
+    return Worktree(
+        task_id=r["task_id"],
+        repo=r["repo"],
+        path=r["path"],
+        branch=r["branch"],
+        state=WorktreeState(r["state"]),
+        created_at=datetime.fromisoformat(r["created_at"]),
+    )
+
+
+class _MiscMixin:
+    async def insert_interaction(self, i: Interaction) -> int:
+        return await self.execute(
+            "INSERT INTO pending_interactions(task_id,stage_idx,kind,prompt,posted_to_channel_ref) "
+            "VALUES (?,?,?,?,?)",
+            (i.task_id, i.stage_idx, i.kind.value, i.prompt, i.posted_to_channel_ref),
+        )
+
+    async def list_pending_interactions(self, tid: int) -> list[Interaction]:
+        rows = await self.fetch_all(
+            "SELECT * FROM pending_interactions WHERE task_id=? ORDER BY id", (tid,)
+        )
+        return [_row_to_int(r) for r in rows]
+
+    async def resolve_interaction(self, iid: int) -> None:
+        await self.execute("DELETE FROM pending_interactions WHERE id=?", (iid,))
+
+    async def insert_worktree(self, w: Worktree) -> None:
+        await self.execute(
+            "INSERT INTO worktrees(task_id,repo,path,branch,state) VALUES (?,?,?,?,?)",
+            (w.task_id, w.repo, w.path, w.branch, w.state.value),
+        )
+
+    async def get_worktree(self, tid: int) -> Worktree | None:
+        r = await self.fetch_one("SELECT * FROM worktrees WHERE task_id=?", (tid,))
+        return _row_to_worktree(r) if r else None
+
+    async def set_worktree_state(self, tid: int, state: WorktreeState) -> None:
+        await self.execute(
+            "UPDATE worktrees SET state=? WHERE task_id=?", (state.value, tid)
+        )
+
+    async def record_agent_pick(self, p: AgentPick) -> None:
+        await self.execute(
+            "INSERT OR REPLACE INTO agent_picks(task_id,stage_idx,agent_name,from_transcript_parse) "
+            "VALUES (?,?,?,?)",
+            (p.task_id, p.stage_idx, p.agent_name, int(p.from_transcript_parse)),
+        )
+
+    async def list_agent_picks(self, tid: int) -> list[AgentPick]:
+        rows = await self.fetch_all(
+            "SELECT * FROM agent_picks WHERE task_id=? ORDER BY stage_idx", (tid,)
+        )
+        return [
+            AgentPick(
+                task_id=r["task_id"],
+                stage_idx=r["stage_idx"],
+                agent_name=r["agent_name"],
+                from_transcript_parse=bool(r["from_transcript_parse"]),
+            )
+            for r in rows
+        ]
+
+    async def log_event(self, e: TaskEvent) -> None:
+        await self.execute(
+            "INSERT INTO task_events(task_id,kind,detail_json) VALUES (?,?,?)",
+            (e.task_id, e.kind, json.dumps(e.detail)),
+        )
+
+    async def list_events(self, tid: int) -> list[TaskEvent]:
+        rows = await self.fetch_all(
+            "SELECT * FROM task_events WHERE task_id=? ORDER BY id", (tid,)
+        )
+        return [
+            TaskEvent(
+                id=r["id"],
+                task_id=r["task_id"],
+                kind=r["kind"],
+                detail=json.loads(r["detail_json"]),
+                ts=datetime.fromisoformat(r["ts"]),
+            )
+            for r in rows
+        ]
+
+
+for _n in dir(_MiscMixin):
+    if not _n.startswith("_"):
+        setattr(StateDB, _n, getattr(_MiscMixin, _n))
