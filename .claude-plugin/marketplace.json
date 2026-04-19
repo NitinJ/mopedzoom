@@ -1,0 +1,11 @@
+{
+  "name": "mopedzoom",
+  "owner": { "name": "NitinJ" },
+  "plugins": [
+    {
+      "name": "mopedzoom",
+      "source": ".",
+      "description": "Always-on Claude task orchestrator (Telegram/CLI -> playbook agents)."
+    }
+  ]
+}
