@@ -1,0 +1,7 @@
+{
+  "name": "mopedzoom",
+  "version": "0.1.0",
+  "description": "Always-on task orchestrator with Telegram/CLI intake, playbook-driven agents, git worktrees, and a local dashboard.",
+  "commands": "./commands",
+  "skills": "./skills"
+}
