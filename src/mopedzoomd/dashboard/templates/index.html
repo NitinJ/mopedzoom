@@ -1,15 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Tasks</h2>
-<table>
-<tr><th>ID</th><th>Playbook</th><th>Status</th><th>Created</th></tr>
-{% for t in tasks %}
-<tr>
-  <td><a href="/tasks/{{t.id}}">#{{t.id}}</a></td>
-  <td>{{t.playbook_id}}</td>
-  <td>{{t.status.value}}</td>
-  <td>{{t.created_at}}</td>
-</tr>
-{% endfor %}
-</table>
+<div hx-get="/fragments/tasks" hx-trigger="every 3s" hx-swap="innerHTML">
+{% include "fragment_tasks.html" %}
+</div>
 {% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Playbooks</h2>
+<table>
+<tr><th>ID</th><th>Summary</th><th>Triggers</th><th>Stages</th></tr>
+{% for pb in playbooks %}
+<tr>
+  <td>{{pb.id}}</td>
+  <td>{{pb.summary}}</td>
+  <td>{{pb.triggers|join(", ")}}</td>
+  <td>{{pb.stages|length}}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}
