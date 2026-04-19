@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Agents</h2>
+<ul>
+{% for a in agents %}
+<li>{{a}}</li>
+{% endfor %}
+</ul>
+{% endblock %}

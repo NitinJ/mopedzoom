@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""mopedzoom — local CLI talking to mopedzoomd over a Unix socket."""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import socket
+import sys
+
+
+def _send(op: str, **kw) -> dict:
+    sock_path = os.environ.get(
+        "MOPEDZOOM_SOCKET", os.path.expanduser("~/.mopedzoom/socket")
+    )
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.connect(sock_path)
+    payload = {"op": op, **kw}
+    s.send((json.dumps(payload) + "\n").encode())
+    buf = b""
+    while True:
+        chunk = s.recv(4096)
+        if not chunk:
+            break
+        buf += chunk
+        if b"\n" in buf:
+            break
+    s.close()
+    if not buf:
+        return {}
+    return json.loads(buf.decode().splitlines()[0])
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(prog="mopedzoom")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s_submit = sub.add_parser("submit", help="submit a task")
+    s_submit.add_argument("text", nargs="+")
+    s_submit.add_argument("--stages", default=None)
+
+    s_status = sub.add_parser("status", help="task status")
+    s_status.add_argument("id", nargs="?", type=int)
+
+    sub.add_parser("tasks", help="list tasks")
+
+    s_cancel = sub.add_parser("cancel", help="cancel a task")
+    s_cancel.add_argument("id", type=int)
+
+    s_resume = sub.add_parser("resume", help="resume a task")
+    s_resume.add_argument("id", type=int)
+
+    s_edit = sub.add_parser("edit", help="edit a task stage")
+    s_edit.add_argument("id", type=int)
+    s_edit.add_argument("--stage", type=int, default=None)
+
+    s_logs = sub.add_parser("logs", help="fetch logs for a task")
+    s_logs.add_argument("id", type=int)
+
+    sub.add_parser("ui", help="open the local dashboard")
+
+    s_show = sub.add_parser("show-playbook", help="print resolved playbook")
+    s_show.add_argument("id")
+
+    args = p.parse_args()
+    if args.cmd == "submit":
+        kw = {"text": " ".join(args.text)}
+        if args.stages is not None:
+            kw["stages"] = args.stages
+        r = _send("submit", **kw)
+    elif args.cmd == "status":
+        r = _send("status", id=args.id)
+    elif args.cmd == "tasks":
+        r = _send("tasks")
+    elif args.cmd == "cancel":
+        r = _send("cancel", id=args.id)
+    elif args.cmd == "resume":
+        r = _send("resume", id=args.id)
+    elif args.cmd == "edit":
+        r = _send("edit", id=args.id, stage=args.stage)
+    elif args.cmd == "logs":
+        r = _send("logs", id=args.id)
+    elif args.cmd == "ui":
+        r = _send("ui")
+    elif args.cmd == "show-playbook":
+        r = _send("show-playbook", id=args.id)
+    else:
+        sys.exit(2)
+    print(json.dumps(r, indent=2))
+
+
+if __name__ == "__main__":
+    main()

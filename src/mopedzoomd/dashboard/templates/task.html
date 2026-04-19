@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Task #{{task.id}} &mdash; {{task.playbook_id}}</h2>
+<p>Status: {{task.status.value}}</p>
+<h3>Stages</h3>
+<table>
+<tr><th>#</th><th>Name</th><th>Status</th><th>Agent</th></tr>
+{% for s in stages %}
+<tr><td>{{s.idx}}</td><td>{{s.name}}</td><td>{{s.status.value}}</td>
+    <td>{{s.agent_used or '-'}}</td></tr>
+{% endfor %}
+</table>
+<h3>Events</h3>
+<ul>{% for e in events %}<li>[{{e.ts}}] {{e.kind}} {{e.detail}}</li>{% endfor %}</ul>
+{% endblock %}
