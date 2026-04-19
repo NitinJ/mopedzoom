@@ -254,3 +254,25 @@ class TaskManager:
 
 class _StageFailed(Exception):
     """Internal signal: stage failed, abort task."""
+
+
+async def resolve_interaction(db: StateDB, *, task_id: int, answer: str) -> None:
+    """Called by channels when the user clicks an approval button or sends a reply."""
+    pend = await db.list_pending_interactions(task_id)
+    if not pend:
+        return
+    i = pend[0]
+    await db.resolve_interaction(i.id)
+    if answer == "approve":
+        await db.set_task_status(task_id, TaskStatus.RUNNING)
+    elif answer == "cancel":
+        await db.set_task_status(task_id, TaskStatus.CANCELLED)
+    elif answer == "revise":
+        await db.set_task_status(task_id, TaskStatus.AWAITING_INPUT)
+    elif answer == "pause":
+        await db.set_task_status(task_id, TaskStatus.PAUSED)
+    elif answer == "resume":
+        await db.set_task_status(task_id, TaskStatus.RUNNING)
+    await db.log_event(
+        TaskEvent(task_id=task_id, kind=f"resolved_{answer}", detail={})
+    )
