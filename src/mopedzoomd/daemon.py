@@ -276,3 +276,137 @@ async def resolve_interaction(db: StateDB, *, task_id: int, answer: str) -> None
     await db.log_event(
         TaskEvent(task_id=task_id, kind=f"resolved_{answer}", detail={})
     )
+
+
+# ---------------------------------------------------------------------------
+# Daemon composition + entry point (F21)
+# ---------------------------------------------------------------------------
+
+import logging  # noqa: E402
+import os  # noqa: E402
+import signal  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from .channels.cli_socket import CLISocketChannel  # noqa: E402
+from .channels.telegram import TelegramChannel  # noqa: E402
+from .config import Config, load_config  # noqa: E402
+from .playbooks import load_playbooks  # noqa: E402
+from .worktree import WorktreeManager  # noqa: E402
+
+LOG = logging.getLogger("mopedzoomd")
+
+
+@dataclass
+class Daemon:
+    cfg: Config
+    db: StateDB
+    task_mgr: TaskManager
+    channels: dict[str, Channel]
+
+    async def start(self) -> None:
+        for c in self.channels.values():
+            await c.start()
+
+    async def stop(self) -> None:
+        for c in self.channels.values():
+            await c.stop()
+        await self.db.close()
+
+
+async def build_daemon_from_config(cfg: Config, *, start: bool = True) -> Daemon:
+    state_root = Path(os.environ.get("MOPEDZOOM_STATE", str(Path.home() / ".mopedzoom")))
+    state_root.mkdir(parents=True, exist_ok=True)
+    db = StateDB(str(state_root / "state.db"))
+    await db.connect()
+    await db.migrate()
+
+    builtin = Path(__file__).parent.parent.parent / "playbooks"
+    user = state_root / "playbooks"
+    registry = load_playbooks(builtin_dir=builtin, user_dir=user)
+
+    allowed = {k: v.model_dump() for k, v in cfg.repos.items()}
+    wmgr = WorktreeManager(str(state_root / "worktrees"), allowed)
+
+    channels: dict[str, Channel] = {
+        "cli": CLISocketChannel(str(state_root / "socket")),
+        "telegram": TelegramChannel(
+            bot_token=cfg.channel.bot_token,
+            chat_id=cfg.channel.chat_id,
+            mode=cfg.channel.mode,
+        ),
+    }
+
+    def discover_agents() -> list[str]:
+        paths = [
+            Path.home() / ".claude" / "plugins",
+            Path.home() / ".claude" / "agents",
+        ]
+        found: list[str] = []
+        for p in paths:
+            if p.exists():
+                for f in p.rglob("agents/*.md"):
+                    found.append(f.stem)
+                for f in p.rglob("*.md"):
+                    if f.parent.name == "agents":
+                        found.append(f.stem)
+        return sorted(set(found))
+
+    tm = TaskManager(
+        db=db,
+        runs_root=str(state_root / "runs"),
+        stage_runner=StageRunner(),
+        playbook_registry=registry,
+        channels=channels,
+        worktree_mgr=wmgr,
+        agent_discoverer=discover_agents,
+    )
+
+    async def on_inbound(msg):
+        if msg.task_id:
+            await resolve_interaction(db, task_id=msg.task_id, answer=msg.text)
+            return
+        LOG.info("new submission: %s", msg.text[:60])
+
+    for c in channels.values():
+        c.set_handler(on_inbound)
+
+    d = Daemon(cfg=cfg, db=db, task_mgr=tm, channels=channels)
+    if start:
+        await d.start()
+    return d
+
+
+def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="mopedzoomd",
+        description="Always-on Claude-powered task orchestrator daemon.",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to config.yaml (defaults to $MOPEDZOOM_STATE/config.yaml).",
+    )
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO)
+    state_root = Path(os.environ.get("MOPEDZOOM_STATE", str(Path.home() / ".mopedzoom")))
+    cfg_path = Path(args.config) if args.config else state_root / "config.yaml"
+    cfg = load_config(cfg_path)
+    loop = asyncio.new_event_loop()
+    daemon = loop.run_until_complete(build_daemon_from_config(cfg, start=True))
+
+    stop = asyncio.Event()
+
+    def handle_sig(*_):
+        loop.call_soon_threadsafe(stop.set)
+
+    for s in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(s, handle_sig)
+    try:
+        loop.run_until_complete(stop.wait())
+    finally:
+        loop.run_until_complete(daemon.stop())
+        loop.close()
