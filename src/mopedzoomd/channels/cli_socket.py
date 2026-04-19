@@ -42,7 +42,9 @@ class CLISocketChannel(Channel):
             if not data:
                 return
             cmd = json.loads(data.decode())
-            if cmd.get("op") == "submit":
+            op = cmd.get("op")
+            reply: dict = {"ack": True, "op": op}
+            if op == "submit":
                 inbound = InboundMessage(
                     channel="cli",
                     user_ref=f"socket:{addr}",
@@ -52,8 +54,16 @@ class CLISocketChannel(Channel):
                 )
                 if self._handler:
                     await self._handler(inbound)
-                writer.write(b'{"ack":true}\n')
-                await writer.drain()
+            elif op in {"status", "tasks", "cancel", "resume", "edit", "logs", "ui", "show-playbook"}:
+                # v1: minimal ack; full dispatcher is wired by the daemon.
+                reply["ok"] = True
+                for k in ("id", "stage"):
+                    if k in cmd:
+                        reply[k] = cmd[k]
+            else:
+                reply = {"ack": False, "error": f"unknown op: {op}"}
+            writer.write((json.dumps(reply) + "\n").encode())
+            await writer.drain()
         finally:
             writer.close()
             try:
