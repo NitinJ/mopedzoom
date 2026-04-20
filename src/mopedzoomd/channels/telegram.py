@@ -107,6 +107,7 @@ class TelegramChannel(Channel):
             ),
             raw={},
             task_id=task_id,
+            thread_id=msg.message_thread_id,
         )
         await self._handler(inbound)
 

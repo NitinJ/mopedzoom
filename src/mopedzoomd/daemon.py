@@ -653,6 +653,15 @@ async def handle_inbound(
         text=msg.text,
         playbook=pb,
     )
+    if msg.thread_id is not None:
+        ch = channels[msg.channel]
+        if hasattr(ch, "bind_task_topic"):
+            ch.bind_task_topic(
+                task_id=task_id,
+                thread_id=msg.thread_id,
+                playbook_id=pb.id,
+                repo="",
+            )
     await channels[msg.channel].post(
         OutboundMessage(
             task_id=task_id,

@@ -137,7 +137,8 @@ async def test_telegram_inbound_text_submits_task(bot_and_channel, tmp_path):
 
     channel.set_handler(handler)
 
-    update = _make_message_update("research AI trends")
+    # Send from within a topic (thread_id=99).
+    update = _make_message_update("research AI trends", thread_id=99)
     await channel._on_message(update, None)
 
     await asyncio.wait_for(bot._msg_event.wait(), timeout=2.0)
@@ -147,9 +148,11 @@ async def test_telegram_inbound_text_submits_task(bot_and_channel, tmp_path):
     assert tasks[0].status == TaskStatus.QUEUED
     assert tasks[0].playbook_id == "research"
     assert len(bot.sent_messages) >= 1
-    # The ack message should contain the task ID.
     ack_text = bot.sent_messages[0]["text"]
     assert str(tasks[0].id) in ack_text
+    # Ack and all subsequent posts go back to the originating topic.
+    assert bot.sent_messages[0]["thread_id"] == 99
+    assert channel._topics[tasks[0].id].thread_id == 99
 
     await db.close()
 

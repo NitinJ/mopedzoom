@@ -19,6 +19,7 @@ class InboundMessage:
     reply_to_ref: str | None  # ref of the message being replied to
     raw: dict[str, Any] = field(default_factory=dict)
     task_id: int | None = None  # populated by channel if it can derive it
+    thread_id: int | None = None  # Telegram forum topic thread_id, if applicable
 
 
 @dataclass
