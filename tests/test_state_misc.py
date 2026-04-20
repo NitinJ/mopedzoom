@@ -60,3 +60,43 @@ async def test_task_events(db):
     await d.log_event(TaskEvent(task_id=tid, kind="queued", detail={"note": "hi"}))
     evs = await d.list_events(tid)
     assert evs[0].kind == "queued" and evs[0].detail == {"note": "hi"}
+
+
+async def test_get_interaction_by_ref_found(db):
+    d, tid = db
+    await d.insert_interaction(
+        Interaction(
+            task_id=tid,
+            stage_idx=0,
+            kind=InteractionKind.REVISION,
+            prompt="review pre-brief",
+            posted_to_channel_ref="tg:-1003970933483:0:99",
+        )
+    )
+    result = await d.get_interaction_by_ref("tg:-1003970933483:0:99")
+    assert result is not None
+    assert result.task_id == tid
+    assert result.kind == InteractionKind.REVISION
+    assert result.stage_idx == 0
+
+
+async def test_get_interaction_by_ref_not_found(db):
+    d, tid = db
+    result = await d.get_interaction_by_ref("tg:-1:0:doesnotexist")
+    assert result is None
+
+
+async def test_get_interaction_by_ref_returns_none_after_resolved(db):
+    d, tid = db
+    iid = await d.insert_interaction(
+        Interaction(
+            task_id=tid,
+            stage_idx=0,
+            kind=InteractionKind.REVISION,
+            prompt="review",
+            posted_to_channel_ref="tg:-1:0:77",
+        )
+    )
+    await d.resolve_interaction(iid)
+    result = await d.get_interaction_by_ref("tg:-1:0:77")
+    assert result is None

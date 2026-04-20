@@ -267,6 +267,12 @@ class _MiscMixin:
     async def resolve_interaction(self, iid: int) -> None:
         await self.execute("DELETE FROM pending_interactions WHERE id=?", (iid,))
 
+    async def get_interaction_by_ref(self, ref: str) -> Interaction | None:
+        r = await self.fetch_one(
+            "SELECT * FROM pending_interactions WHERE posted_to_channel_ref=?", (ref,)
+        )
+        return _row_to_int(r) if r else None
+
     async def insert_worktree(self, w: Worktree) -> None:
         await self.execute(
             "INSERT INTO worktrees(task_id,repo,path,branch,state) VALUES (?,?,?,?,?)",
