@@ -75,6 +75,18 @@ def create_app(
             return JSONResponse({"error": "not found"}, status_code=404)
         return TEMPLATES.TemplateResponse(req, "fragment_playbook_row.html", {"pb": pb})
 
+    @app.get("/playbooks/{pb_id}/edit-form", response_class=HTMLResponse)
+    async def playbook_edit_form(pb_id: str, req: Request):
+        pb = registry.get(pb_id)
+        if pb is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        stages_display = _stages_for_template(pb)
+        return TEMPLATES.TemplateResponse(
+            req,
+            "fragment_playbook_edit.html",
+            {"pb": pb, "stages_display": stages_display, "errors": []},
+        )
+
     @app.get("/health")
     async def health():
         return JSONResponse({"status": "ok"})

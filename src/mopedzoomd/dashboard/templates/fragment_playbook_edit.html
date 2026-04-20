@@ -1,0 +1,128 @@
+<tr id="pb-row-{{pb.id}}" style="background:#0f172a">
+  <td colspan="5" style="padding:1rem 1.25rem">
+
+    {% if errors %}
+    <div style="background:#450a0a;border:1px solid #f87171;border-radius:4px;padding:0.6rem 1rem;margin-bottom:1rem;color:#fca5a5;font-size:0.85rem">
+      {% for e in errors %}<div>⚠ {{e}}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
+      <code style="color:#60a5fa;font-weight:600">{{pb.id}}</code>
+      <span style="font-size:0.7rem;color:#4ade80;background:#052e16;padding:2px 8px;border-radius:4px">editing</span>
+    </div>
+
+    <form hx-post="/playbooks/{{pb.id}}"
+          hx-target="closest tr"
+          hx-swap="outerHTML">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div>
+          <label style="display:block;font-size:0.75rem;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Summary</label>
+          <input name="summary" value="{{pb.summary}}"
+                 style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:0.85rem;font-family:inherit">
+        </div>
+        <div>
+          <label style="display:block;font-size:0.75rem;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Triggers (comma-separated)</label>
+          <input name="triggers" value="{{pb.triggers|join(', ')}}"
+                 style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:0.85rem;font-family:inherit">
+        </div>
+      </div>
+
+      <label style="display:block;font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em">Stages</label>
+
+      <div id="stages-container" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem">
+        {% for s in stages_display %}
+        <div class="stage-card" style="background:#1e293b;border:1px solid #334155;border-radius:4px;padding:0.75rem">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+            <span style="font-size:0.7rem;color:#64748b;font-family:monospace;background:#0f172a;padding:2px 7px;border-radius:3px">{{s.idx}}</span>
+            <input name="stage_{{s.idx}}_name" value="{{s.name}}"
+                   style="flex:1;background:#0f172a;border:1px solid #334155;color:#60a5fa;padding:4px 8px;border-radius:4px;font-size:0.82rem;font-family:monospace">
+            <button type="button" onclick="removeStage(this)"
+                    style="font-size:0.75rem;padding:3px 8px;background:transparent;border:1px solid #7f1d1d;color:#f87171;border-radius:4px;cursor:pointer;line-height:1">✕</button>
+          </div>
+          <textarea name="stage_{{s.idx}}_requires" rows="2"
+                    style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:0.82rem;font-family:inherit;resize:vertical">{{s.requires}}</textarea>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.5rem">
+            <div>
+              <label style="display:block;font-size:0.7rem;color:#64748b;margin-bottom:3px">Produces</label>
+              <input name="stage_{{s.idx}}_produces" value="{{s.produces}}"
+                     style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #334155;color:#94a3b8;padding:4px 8px;border-radius:4px;font-size:0.8rem;font-family:monospace">
+            </div>
+            <div>
+              <label style="display:block;font-size:0.7rem;color:#64748b;margin-bottom:3px">Approval</label>
+              <select name="stage_{{s.idx}}_approval"
+                      style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #334155;color:#94a3b8;padding:4px 8px;border-radius:4px;font-size:0.8rem">
+                {% for opt in ['required','on-completion','on-failure','none'] %}
+                <option value="{{opt}}" {% if s.approval == opt %}selected{% endif %}>{{opt}}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <button type="button" onclick="addStage()"
+              style="width:100%;padding:8px;background:transparent;border:1px dashed #334155;color:#475569;border-radius:4px;cursor:pointer;font-size:0.82rem;margin-bottom:1rem">+ Add Stage</button>
+
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+        <button type="button"
+                hx-get="/playbooks/{{pb.id}}/row"
+                hx-target="closest tr"
+                hx-swap="outerHTML"
+                style="font-size:0.8rem;padding:5px 14px;background:transparent;border:1px solid #334155;color:#94a3b8;border-radius:4px;cursor:pointer">Cancel</button>
+        <button type="submit"
+                style="font-size:0.8rem;padding:5px 14px;background:#166534;border:1px solid #4ade80;color:#4ade80;border-radius:4px;cursor:pointer">Save &amp; Reload</button>
+      </div>
+    </form>
+
+    <template id="stage-template">
+      <div class="stage-card" style="background:#0d2137;border:1px dashed #3b82f6;border-radius:4px;padding:0.75rem">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+          <span class="stage-idx-label" style="font-size:0.7rem;color:#64748b;font-family:monospace;background:#0f172a;padding:2px 7px;border-radius:3px">?</span>
+          <input data-field="name" name="stage_0_name" placeholder="stage-name"
+                 style="flex:1;background:#0f172a;border:1px solid #334155;color:#60a5fa;padding:4px 8px;border-radius:4px;font-size:0.82rem;font-family:monospace">
+          <button type="button" onclick="removeStage(this)"
+                  style="font-size:0.75rem;padding:3px 8px;background:transparent;border:1px solid #7f1d1d;color:#f87171;border-radius:4px;cursor:pointer;line-height:1">✕</button>
+        </div>
+        <textarea data-field="requires" name="stage_0_requires" rows="2" placeholder="Stage prompt (what the agent must do)"
+                  style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:0.82rem;font-family:inherit;resize:vertical"></textarea>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.5rem">
+          <div>
+            <label style="display:block;font-size:0.7rem;color:#64748b;margin-bottom:3px">Produces</label>
+            <input data-field="produces" name="stage_0_produces" placeholder="output.md"
+                   style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #334155;color:#94a3b8;padding:4px 8px;border-radius:4px;font-size:0.8rem;font-family:monospace">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.7rem;color:#64748b;margin-bottom:3px">Approval</label>
+            <select data-field="approval" name="stage_0_approval"
+                    style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #334155;color:#94a3b8;padding:4px 8px;border-radius:4px;font-size:0.8rem">
+              <option value="required" selected>required</option>
+              <option value="on-completion">on-completion</option>
+              <option value="on-failure">on-failure</option>
+              <option value="none">none</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <script>
+    function addStage() {
+      const container = document.getElementById('stages-container');
+      const idx = container.querySelectorAll('.stage-card').length;
+      const tpl = document.getElementById('stage-template').content.cloneNode(true);
+      tpl.querySelector('.stage-idx-label').textContent = idx;
+      tpl.querySelectorAll('[data-field]').forEach(function(el) {
+        el.name = 'stage_' + idx + '_' + el.dataset.field;
+      });
+      container.appendChild(tpl);
+    }
+    function removeStage(btn) {
+      btn.closest('.stage-card').remove();
+    }
+    </script>
+
+  </td>
+</tr>

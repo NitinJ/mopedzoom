@@ -57,3 +57,33 @@ async def test_get_row_unknown_returns_404(editor_client):
     c, _, _ = editor_client
     r = await c.get("/playbooks/nonexistent/row")
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_edit_form_returns_200(editor_client):
+    c, _, _ = editor_client
+    r = await c.get("/playbooks/research/edit-form")
+    assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_get_edit_form_prefills_summary(editor_client):
+    c, _, _ = editor_client
+    r = await c.get("/playbooks/research/edit-form")
+    assert "Research a topic" in r.text
+
+
+@pytest.mark.asyncio
+async def test_get_edit_form_contains_stage_fields(editor_client):
+    c, _, _ = editor_client
+    r = await c.get("/playbooks/research/edit-form")
+    assert "stage_0_requires" in r.text
+    assert "stage_1_requires" in r.text
+    assert "Scope the research" in r.text
+
+
+@pytest.mark.asyncio
+async def test_get_edit_form_unknown_returns_404(editor_client):
+    c, _, _ = editor_client
+    r = await c.get("/playbooks/nonexistent/edit-form")
+    assert r.status_code == 404
