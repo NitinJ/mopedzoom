@@ -1,6 +1,6 @@
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -391,3 +391,62 @@ async def test_await_review_artifact_file_missing_raises_stage_failed(tmp_path):
         )
 
     await db.close()
+
+
+# ---------------------------------------------------------------------------
+# Fix 1: unexpected status raises RuntimeError
+# ---------------------------------------------------------------------------
+
+
+async def test_await_review_unexpected_status_raises_runtime_error(tmp_path):
+    """_await_review should raise RuntimeError when status is PAUSED (unexpected)."""
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    tid = await db.insert_task(Task(channel="telegram", user_ref="u", playbook_id="p", inputs={}))
+    await db.set_task_status(tid, TaskStatus.RUNNING)
+
+    tm = _make_task_manager(tmp_path, db)
+    scratch = ScratchDir(str(tmp_path / "runs"), task_id=tid)
+    scratch.create()
+
+    artifact_file = scratch.dir / "brief.md"
+    artifact_file.write_text("# Brief content")
+    scratch.write_deliverable(0, "pre-brief", "done", [{"path": "brief.md", "kind": "markdown"}])
+
+    sspec, idx = _make_stage_spec(0)
+
+    original_list_pending = db.list_pending_interactions
+    call_count = 0
+
+    async def fake_list_pending(task_id):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            result = await original_list_pending(task_id)
+            for i in result:
+                await db.resolve_interaction(i.id)
+            await db.set_task_status(task_id, TaskStatus.PAUSED)
+            return []
+        return []
+
+    db.list_pending_interactions = fake_list_pending
+
+    channel = tm.channels["telegram"]
+    with pytest.raises(RuntimeError, match="unexpected task status after review"):
+        await tm._await_review(
+            task_id=tid,
+            stage=sspec,
+            idx=idx,
+            scratch=scratch,
+            channel=channel,
+        )
+
+    await db.close()
+
+
+# ---------------------------------------------------------------------------
+# Fix 5: path traversal test
+# ---------------------------------------------------------------------------
+

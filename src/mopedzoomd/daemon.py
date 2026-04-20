@@ -571,6 +571,7 @@ class TaskManager:
             raise _RetryStage()
         if t.status == TaskStatus.CANCELLED:
             raise RuntimeError("task cancelled by user")
+        raise RuntimeError(f"unexpected task status after review: {t.status}")
 
     async def _await_approval(
         self,
