@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 
@@ -28,6 +29,7 @@ class OutboundMessage:
     buttons: list[ApprovalButton] = field(default_factory=list)
     task_id: int | None = None
     channel_ref: str | None = None  # the exact thread/topic/socket to post into
+    document_path: Path | None = None
 
 
 class Channel(ABC):

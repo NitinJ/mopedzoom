@@ -77,12 +77,22 @@ class TelegramChannel(Channel):
                 ]
             ]
             kb = InlineKeyboardMarkup(rows)
-        sent = await self._bot.send_message(
-            chat_id=self.chat_id,
-            text=header + msg.body,
-            reply_markup=kb,
-            message_thread_id=tb.thread_id if (tb and self.mode == "topics") else None,
-        )
+        thread_id = tb.thread_id if (tb and self.mode == "topics") else None
+        if msg.document_path is not None:
+            sent = await self._bot.send_document(
+                chat_id=self.chat_id,
+                document=msg.document_path,
+                caption=header + msg.body,
+                reply_markup=kb,
+                message_thread_id=thread_id,
+            )
+        else:
+            sent = await self._bot.send_message(
+                chat_id=self.chat_id,
+                text=header + msg.body,
+                reply_markup=kb,
+                message_thread_id=thread_id,
+            )
         return f"tg:{sent.chat_id}:{sent.message_thread_id or 0}:{sent.message_id}"
 
     async def _on_message(self, update: Update, context) -> None:
