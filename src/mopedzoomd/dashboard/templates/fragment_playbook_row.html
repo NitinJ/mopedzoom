@@ -1,0 +1,12 @@
+<tr id="pb-row-{{pb.id}}">
+  <td><code>{{pb.id}}</code></td>
+  <td>{{pb.summary}}</td>
+  <td>{{pb.triggers|join(", ")}}</td>
+  <td>{{pb.stages|length}}</td>
+  <td>
+    <button hx-get="/playbooks/{{pb.id}}/edit-form"
+            hx-target="closest tr"
+            hx-swap="outerHTML"
+            style="font-size:0.75rem;padding:3px 10px;background:#1e3a5f;border:1px solid #3b82f6;color:#93c5fd;border-radius:4px;cursor:pointer">Edit</button>
+  </td>
+</tr>

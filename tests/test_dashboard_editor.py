@@ -41,3 +41,19 @@ async def test_create_app_accepts_user_playbooks_dir(tmp_path):
     app = create_app(db, user_playbooks_dir=tmp_path / "playbooks")
     assert app is not None
     await db.close()
+
+
+@pytest.mark.asyncio
+async def test_get_row_returns_200(editor_client):
+    c, reg, _ = editor_client
+    r = await c.get("/playbooks/research/row")
+    assert r.status_code == 200
+    assert "research" in r.text
+    assert "Research a topic" in r.text
+
+
+@pytest.mark.asyncio
+async def test_get_row_unknown_returns_404(editor_client):
+    c, _, _ = editor_client
+    r = await c.get("/playbooks/nonexistent/row")
+    assert r.status_code == 404

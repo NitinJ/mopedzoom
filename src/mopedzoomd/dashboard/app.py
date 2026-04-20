@@ -68,6 +68,13 @@ def create_app(
         pbs = list(registry.values())
         return TEMPLATES.TemplateResponse(req, "playbooks.html", {"playbooks": pbs})
 
+    @app.get("/playbooks/{pb_id}/row", response_class=HTMLResponse)
+    async def playbook_row(pb_id: str, req: Request):
+        pb = registry.get(pb_id)
+        if pb is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        return TEMPLATES.TemplateResponse(req, "fragment_playbook_row.html", {"pb": pb})
+
     @app.get("/health")
     async def health():
         return JSONResponse({"status": "ok"})
