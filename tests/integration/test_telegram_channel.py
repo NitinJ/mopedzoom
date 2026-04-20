@@ -43,6 +43,31 @@ class FakeBot:
         m.message_id = len(self.sent_messages)
         return m
 
+    async def send_document(
+        self,
+        *,
+        chat_id,
+        document,
+        caption=None,
+        reply_markup=None,
+        message_thread_id=None,
+        **kwargs,
+    ):
+        self.sent_messages.append(
+            {
+                "chat_id": chat_id,
+                "document": document,
+                "caption": caption,
+                "thread_id": message_thread_id,
+            }
+        )
+        self._msg_event.set()
+        m = MagicMock()
+        m.chat_id = chat_id
+        m.message_thread_id = message_thread_id or 0
+        m.message_id = len(self.sent_messages)
+        return m
+
     async def create_forum_topic(self, *, chat_id, name, **kwargs):
         self.created_topics.append({"chat_id": chat_id, "name": name})
         ft = MagicMock()
