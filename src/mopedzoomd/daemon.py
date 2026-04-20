@@ -474,7 +474,7 @@ class TaskManager:
             research_instruction = (
                 f"\nCommit the report into repo `{repo}` at path `{path}`.\n"
             )
-        return (
+        prompt = (
             f"Task {task.id} ({pb.summary}).\n"
             f"Stage: {sspec.name}\n"
             f"Goal: {sspec.requires}\n"
@@ -496,6 +496,19 @@ class TaskManager:
             f"Writing question.json means the stage is NOT complete — do not write both.\n"
             f"{research_instruction}"
         )
+
+        answer = scratch.read_answer(idx)
+        feedbacks = scratch.read_feedback(idx)
+
+        if answer is not None:
+            prompt += f'\nUser answered your questions: "{answer}"'
+
+        if feedbacks:
+            prompt += "\n\nUser feedback from prior iterations:"
+            for i, fb in enumerate(feedbacks, 1):
+                prompt += f'\n  - Iteration {i}: "{fb}"'
+
+        return prompt
 
     async def _await_approval(
         self,
