@@ -521,6 +521,9 @@ class TaskManager:
             f'{{"prompt": "Your question here"}} and exit WITHOUT writing the deliverable manifest. '
             f"Writing question.json means the stage is NOT complete — do not write both.\n"
             f"{research_instruction}"
+            f"\nIMPORTANT: If you write any content to Google Docs, always convert markdown to HTML first. "
+            f"Google Docs does not render markdown syntax — asterisks, hashes, and backticks will appear as literal characters. "
+            f"Use proper HTML tags (<b>, <i>, <h1>–<h3>, <ul>/<li>, <code>, <br>) when writing to Google Docs.\n"
         )
 
         answer = scratch.read_answer(idx)
