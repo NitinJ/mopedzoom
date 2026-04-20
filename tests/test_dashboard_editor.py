@@ -191,3 +191,12 @@ async def test_post_unknown_playbook_returns_404(editor_client):
     c, _, _ = editor_client
     r = await c.post("/playbooks/nonexistent", data={"summary": "x"})
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_playbooks_page_has_edit_buttons(editor_client):
+    c, _, _ = editor_client
+    r = await c.get("/playbooks")
+    assert r.status_code == 200
+    assert "edit-form" in r.text
+    assert "hx-get" in r.text
