@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import stat
+from pathlib import Path
 
 import pytest
 
@@ -30,3 +31,15 @@ def fake_claude(tmp_path, monkeypatch):
     p.chmod(p.stat().st_mode | stat.S_IEXEC)
     monkeypatch.setenv("PATH", f"{tmp_path}:{os.environ['PATH']}")
     return p
+
+
+@pytest.fixture
+def fake_claude_variant(tmp_path, monkeypatch):
+    """Factory: install a custom bash script as the `claude` binary on PATH."""
+    def _make(script_body: str) -> Path:
+        p = tmp_path / "claude"
+        p.write_text("#!/usr/bin/env bash\n" + script_body)
+        p.chmod(p.stat().st_mode | stat.S_IEXEC)
+        monkeypatch.setenv("PATH", f"{tmp_path}:{os.environ['PATH']}")
+        return p
+    return _make
