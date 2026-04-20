@@ -592,3 +592,50 @@ async def test_await_review_post_retry_succeeds_on_second_attempt(tmp_path):
 # Fix 8: CANCELLED path in _await_review
 # ---------------------------------------------------------------------------
 
+
+async def test_await_review_cancelled_raises_runtime_error(tmp_path):
+    """_await_review should raise RuntimeError('task cancelled by user') when CANCELLED."""
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    tid = await db.insert_task(Task(channel="telegram", user_ref="u", playbook_id="p", inputs={}))
+    await db.set_task_status(tid, TaskStatus.RUNNING)
+
+    tm = _make_task_manager(tmp_path, db)
+    scratch = ScratchDir(str(tmp_path / "runs"), task_id=tid)
+    scratch.create()
+
+    artifact_file = scratch.dir / "brief.md"
+    artifact_file.write_text("# Brief content")
+    scratch.write_deliverable(0, "pre-brief", "done", [{"path": "brief.md", "kind": "markdown"}])
+
+    sspec, idx = _make_stage_spec(0)
+
+    original_list_pending = db.list_pending_interactions
+    call_count = 0
+
+    async def fake_list_pending(task_id):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            result = await original_list_pending(task_id)
+            for i in result:
+                await db.resolve_interaction(i.id)
+            await db.set_task_status(task_id, TaskStatus.CANCELLED)
+            return []
+        return []
+
+    db.list_pending_interactions = fake_list_pending
+
+    channel = tm.channels["telegram"]
+    with pytest.raises(RuntimeError, match="task cancelled by user"):
+        await tm._await_review(
+            task_id=tid,
+            stage=sspec,
+            idx=idx,
+            scratch=scratch,
+            channel=channel,
+        )
+
+    await db.close()
