@@ -101,3 +101,118 @@ def bot_and_channel():
         _app=MagicMock(),
     )
     return bot, channel
+
+
+@pytest.mark.asyncio
+async def test_telegram_inbound_text_submits_task(bot_and_channel, tmp_path):
+    """Inbound text matching a playbook trigger → task inserted in DB + ack sent."""
+    bot, channel = bot_and_channel
+
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    root = Path(__file__).resolve().parents[2]
+    registry = load_playbooks(builtin_dir=root / "playbooks", user_dir=None)
+    router = Router(registry=registry, claude_client=None)
+    tm = TaskManager(
+        db=db,
+        runs_root=str(tmp_path / "runs"),
+        stage_runner=StageRunner(),
+        playbook_registry=registry,
+        channels={"telegram": channel},
+        worktree_mgr=None,
+        agent_discoverer=lambda: [],
+    )
+
+    async def handler(msg):
+        await handle_inbound(
+            msg,
+            db=db,
+            router=router,
+            tm=tm,
+            channels={"telegram": channel},
+            registry=registry,
+        )
+
+    channel.set_handler(handler)
+
+    update = _make_message_update("research AI trends")
+    await channel._on_message(update, None)
+
+    await asyncio.wait_for(bot._msg_event.wait(), timeout=2.0)
+
+    tasks = await db.list_tasks(limit=10)
+    assert len(tasks) >= 1
+    # The task was created; status may be QUEUED or have advanced (RUNNING/FAILED)
+    # after the background run_task coroutine got scheduled.
+    assert tasks[0].playbook_id == "research"
+    assert len(bot.sent_messages) >= 1
+    # The ack message should contain the task ID.
+    ack_text = bot.sent_messages[0]["text"]
+    assert str(tasks[0].id) in ack_text
+
+    await db.close()
+
+
+@pytest.mark.asyncio
+async def test_telegram_approval_button_resolves_interaction(bot_and_channel, tmp_path):
+    """Approval button callback → resolve_interaction sets task status correctly."""
+    bot, channel = bot_and_channel
+
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    tid = await db.insert_task(
+        Task(channel="telegram", user_ref="chat:-100123", playbook_id="research", inputs={})
+    )
+    await db.set_task_status(tid, TaskStatus.AWAITING_APPROVAL)
+    await db.insert_interaction(
+        Interaction(
+            task_id=tid,
+            stage_idx=0,
+            kind=InteractionKind.APPROVAL,
+            prompt="Approve stage?",
+            posted_to_channel_ref="tg:-100123:42:1",
+        )
+    )
+
+    async def handler(msg):
+        await resolve_interaction(db, task_id=msg.task_id, answer=msg.text)
+
+    channel.set_handler(handler)
+
+    update = _make_callback_update(tid, "approve")
+    await channel._on_callback(update, None)
+
+    task = await db.get_task(tid)
+    assert task.status == TaskStatus.RUNNING
+
+    events = await db.list_events(tid)
+    assert any(e.kind == "resolved_approve" for e in events)
+
+    await db.close()
+
+
+@pytest.mark.asyncio
+async def test_telegram_post_sends_to_bound_topic(bot_and_channel):
+    """create_topic + bind_task_topic + post sends message to the right thread."""
+    bot, channel = bot_and_channel
+
+    thread_id = await channel.create_topic(title="Task #1 — research")
+    assert thread_id == 42
+    assert len(bot.created_topics) == 1
+    assert bot.created_topics[0]["name"] == "Task #1 — research"
+
+    channel.bind_task_topic(
+        task_id=1, thread_id=thread_id, playbook_id="research", repo="ml"
+    )
+
+    ref = await channel.post(OutboundMessage(task_id=1, body="Stage done"))
+
+    assert len(bot.sent_messages) == 1
+    assert bot.sent_messages[0]["text"] == "Stage done"
+    assert bot.sent_messages[0]["thread_id"] == 42
+    assert ref.startswith("tg:")
+    assert ":42:" in ref
