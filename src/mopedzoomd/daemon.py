@@ -451,13 +451,16 @@ class TaskManager:
         if sspec.approval in ("required", "on-completion"):
             await self._await_approval(task_id, idx, sspec, result, channel)
         elif sspec.approval == "review":
-            await self._await_review(
-                task_id=task_id,
-                stage=sspec,
-                idx=idx,
-                scratch=scratch,
-                channel=channel,
-            )
+            if task.channel == "cli":
+                await self._await_approval(task_id, idx, sspec, result, channel)
+            else:
+                await self._await_review(
+                    task_id=task_id,
+                    stage=sspec,
+                    idx=idx,
+                    scratch=scratch,
+                    channel=channel,
+                )
         await self.db.log_event(
             TaskEvent(task_id=task_id, kind="stage_done", detail={"stage": sspec.name})
         )
