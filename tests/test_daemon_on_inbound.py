@@ -139,3 +139,84 @@ async def test_inbound_empty_text_is_noop(db):
     router.pick.assert_not_called()
     tm.submit_task.assert_not_called()
     channel.post.assert_not_called()
+
+
+async def test_inbound_reply_to_ref_routes_to_revision_interaction(db):
+    """reply_to_ref matching a pending REVISION interaction routes to resolve_interaction."""
+    tid = await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="p", inputs={}))
+    await db.set_task_status(tid, TaskStatus.AWAITING_INPUT)
+    await db.insert_interaction(
+        Interaction(
+            task_id=tid,
+            stage_idx=0,
+            kind=InteractionKind.REVISION,
+            prompt="revise?",
+            posted_to_channel_ref="tg:100:0:999",
+        )
+    )
+
+    router = AsyncMock()
+    tm = AsyncMock()
+    tm.runs_root = "/tmp/fake_runs"
+    channel = AsyncMock()
+    channels = {"cli": channel}
+
+    msg = _Inbound(channel="cli", text="make it shorter", reply_to_ref="tg:100:0:999", task_id=None)
+    await handle_inbound(msg, db=db, router=router, tm=tm, channels=channels, registry={})
+
+    # resolve_interaction with free-text on REVISION sets AWAITING_INPUT
+    t = await db.get_task(tid)
+    assert t.status == TaskStatus.AWAITING_INPUT
+    router.pick.assert_not_called()
+    tm.submit_task.assert_not_called()
+
+
+async def test_inbound_reply_to_ref_no_match_falls_through_to_new_task(db):
+    """When reply_to_ref has no matching interaction, falls through to normal routing."""
+    pb = _pb("research", ("research",))
+    router = AsyncMock()
+    router.pick = AsyncMock(return_value=pb)
+    tm = AsyncMock()
+    tm.runs_root = "/tmp/fake_runs"
+    tm.submit_task = AsyncMock(return_value=42)
+    channel = AsyncMock()
+    channel.post = AsyncMock(return_value="ref")
+    channels = {"cli": channel}
+
+    msg = _Inbound(channel="cli", text="research oauth", reply_to_ref="tg:100:0:999", task_id=None)
+    await handle_inbound(msg, db=db, router=router, tm=tm, channels=channels, registry={"research": pb})
+
+    # No matching interaction → falls through to submit_task
+    tm.submit_task.assert_awaited_once()
+
+
+async def test_inbound_task_id_takes_priority_over_reply_to_ref(db):
+    """task_id branch fires first; reply_to_ref lookup is never reached."""
+    tid = await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="p", inputs={}))
+    await db.set_task_status(tid, TaskStatus.AWAITING_APPROVAL)
+    await db.insert_interaction(
+        Interaction(
+            task_id=tid,
+            stage_idx=0,
+            kind=InteractionKind.APPROVAL,
+            prompt="approve?",
+            posted_to_channel_ref="x",
+        )
+    )
+
+    router = AsyncMock()
+    tm = AsyncMock()
+    tm.runs_root = "/tmp/fake_runs"
+    channel = AsyncMock()
+    channels = {"cli": channel}
+
+    # reply_to_ref points to a non-existent ref — if it were consulted the lookup
+    # would return None and routing would fall through (wrong outcome).
+    msg = _Inbound(channel="cli", text="approve", task_id=tid, reply_to_ref="tg:100:0:999")
+    await handle_inbound(msg, db=db, router=router, tm=tm, channels=channels, registry={})
+
+    # task_id branch resolved the APPROVAL → RUNNING
+    t = await db.get_task(tid)
+    assert t.status == TaskStatus.RUNNING
+    router.pick.assert_not_called()
+    tm.submit_task.assert_not_called()

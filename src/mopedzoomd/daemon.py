@@ -659,8 +659,17 @@ async def handle_inbound(
     reachable from tests without spinning up a full daemon.
     """
     if msg.task_id:
-        await resolve_interaction(db, task_id=msg.task_id, answer=msg.text)
+        scratch = ScratchDir(tm.runs_root, msg.task_id)
+        await resolve_interaction(db, task_id=msg.task_id, answer=msg.text, scratch=scratch)
         return
+    if msg.reply_to_ref and msg.task_id is None:
+        interaction = await db.get_interaction_by_ref(msg.reply_to_ref)
+        if interaction is not None:
+            scratch = ScratchDir(tm.runs_root, interaction.task_id)
+            await resolve_interaction(
+                db, task_id=interaction.task_id, answer=msg.text, scratch=scratch
+            )
+            return
     if not msg.text:
         return
     LOG.info("new submission: %s", msg.text[:120])
