@@ -144,8 +144,7 @@ async def test_telegram_inbound_text_submits_task(bot_and_channel, tmp_path):
 
     tasks = await db.list_tasks(limit=10)
     assert len(tasks) >= 1
-    # The task was created; status may be QUEUED or have advanced (RUNNING/FAILED)
-    # after the background run_task coroutine got scheduled.
+    assert tasks[0].status == TaskStatus.QUEUED
     assert tasks[0].playbook_id == "research"
     assert len(bot.sent_messages) >= 1
     # The ack message should contain the task ID.
