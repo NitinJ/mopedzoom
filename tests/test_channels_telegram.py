@@ -6,7 +6,7 @@ from mopedzoomd.channels.telegram import TelegramChannel, _format_header
 
 def test_header_format():
     h = _format_header(task_id=47, playbook_id="bug-fix", repo="trialroomai", mode="header")
-    assert h == "[#47 \u00b7 bug-fix \u00b7 trialroomai] "
+    assert h == "[#47 \u00b7 <b>bug-fix</b> \u00b7 trialroomai] "
 
 
 def test_header_empty_in_topics_mode():

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html as _html
 from dataclasses import dataclass
 
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -11,7 +12,7 @@ from .base import Channel, InboundMessage, OutboundMessage
 def _format_header(task_id: int, playbook_id: str, repo: str, mode: str) -> str:
     if mode == "topics":
         return ""
-    return f"[#{task_id} \u00b7 {playbook_id} \u00b7 {repo}] "
+    return f"[#{task_id} \u00b7 <b>{_html.escape(playbook_id)}</b> \u00b7 {_html.escape(repo)}] "
 
 
 @dataclass
@@ -85,6 +86,7 @@ class TelegramChannel(Channel):
                 caption=header + msg.body,
                 reply_markup=kb,
                 message_thread_id=thread_id,
+                parse_mode="HTML",
             )
         else:
             sent = await self._bot.send_message(
@@ -92,6 +94,7 @@ class TelegramChannel(Channel):
                 text=header + msg.body,
                 reply_markup=kb,
                 message_thread_id=thread_id,
+                parse_mode="HTML",
             )
         return f"tg:{sent.chat_id}:{sent.message_thread_id or 0}:{sent.message_id}"
 

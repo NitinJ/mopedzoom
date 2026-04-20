@@ -31,10 +31,10 @@ class FakeBot:
         self._msg_event: asyncio.Event = asyncio.Event()
 
     async def send_message(
-        self, *, chat_id, text, reply_markup=None, message_thread_id=None, **kwargs
+        self, *, chat_id, text, reply_markup=None, message_thread_id=None, parse_mode=None, **kwargs
     ):
         self.sent_messages.append(
-            {"chat_id": chat_id, "text": text, "thread_id": message_thread_id}
+            {"chat_id": chat_id, "text": text, "thread_id": message_thread_id, "parse_mode": parse_mode}
         )
         self._msg_event.set()
         m = MagicMock()
@@ -51,6 +51,7 @@ class FakeBot:
         caption=None,
         reply_markup=None,
         message_thread_id=None,
+        parse_mode=None,
         **kwargs,
     ):
         self.sent_messages.append(
@@ -59,6 +60,7 @@ class FakeBot:
                 "document": document,
                 "caption": caption,
                 "thread_id": message_thread_id,
+                "parse_mode": parse_mode,
             }
         )
         self._msg_event.set()
@@ -259,3 +261,18 @@ async def test_telegram_post_sends_to_bound_topic(bot_and_channel):
     assert bot.sent_messages[0]["thread_id"] == 42
     assert ref.startswith("tg:")
     assert ":42:" in ref
+
+
+@pytest.mark.asyncio
+async def test_telegram_post_uses_html_parse_mode():
+    """post() passes parse_mode='HTML' to both send_message and send_document."""
+    bot = FakeBot()
+    channel = TelegramChannel(
+        bot_token="fake-token",
+        chat_id=-100123,
+        mode="header",
+        _bot=bot,
+        _app=MagicMock(),
+    )
+    await channel.post(OutboundMessage(task_id=0, body="hello"))
+    assert bot.sent_messages[0]["parse_mode"] == "HTML"

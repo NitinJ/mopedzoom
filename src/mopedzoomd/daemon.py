@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import html as _html
 import json
 import logging
 from dataclasses import dataclass, field
@@ -805,7 +806,7 @@ async def handle_inbound(
     await channels[msg.channel].post(
         OutboundMessage(
             task_id=task_id,
-            body=f"\u2705 Task #{task_id} queued \u2014 *{pb.id}*: {pb.summary}",
+            body=f"\u2705 Task #{task_id} queued \u2014 <b>{_html.escape(pb.id)}</b>: {_html.escape(pb.summary)}",
         )
     )
 
