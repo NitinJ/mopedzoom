@@ -14,6 +14,7 @@ from mopedzoomd.channels.cli_socket import CLISocketChannel
 from mopedzoomd.daemon import TaskManager, build_cli_op_handler, resolve_interaction
 from mopedzoomd.models import Interaction, InteractionKind, Task, StageStatus, TaskStatus
 from mopedzoomd.playbooks import Playbook, StageSpec
+from mopedzoomd.scratch import ScratchDir
 from mopedzoomd.stage_runner import StageRunner
 from mopedzoomd.state import StateDB
 
@@ -176,6 +177,96 @@ EOF
     events = await db.list_events(tid)
     kinds = [e.kind for e in events]
     assert "stage_done" in kinds
+    await db.close()
+
+
+async def test_review_gate_full_cycle(fake_claude_variant, tmp_path):
+    """approval:review on Telegram channel: feedback then approve transitions to DELIVERED."""
+    # First invocation writes a deliverable with an artifact file.
+    # Second invocation (after _RetryStage due to feedback) writes same deliverable again.
+    fake_claude_variant(
+        """
+echo "session-id: sess-review"
+stage="$MOPEDZOOM_STAGE"
+scratch="$MOPEDZOOM_SCRATCH"
+
+# Always write the artifact file and manifest
+cat > "$scratch/brief.md" <<'EOF'
+# Brief content
+EOF
+cat > "$scratch/0-pre-brief.deliverable.json" <<'EOF'
+{"stage":"pre-brief","status":"done","artifacts":[{"path":"brief.md","kind":"markdown"}],"notes":"initial brief"}
+EOF
+"""
+    )
+
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    pb = Playbook(
+        id="review-test",
+        summary="review gate test",
+        triggers=["review"],
+        stages=[
+            StageSpec(name="pre-brief", requires="write brief", produces="brief.md", approval="review"),
+        ],
+    )
+    ch = _RecordingChannel()
+    tm = TaskManager(
+        db=db,
+        runs_root=str(tmp_path / "runs"),
+        stage_runner=StageRunner(),
+        playbook_registry={"review-test": pb},
+        channels={"telegram": ch},
+        worktree_mgr=None,
+        agent_discoverer=lambda: [],
+    )
+
+    tid = await db.insert_task(
+        Task(channel="telegram", user_ref="u", playbook_id="review-test", inputs={})
+    )
+
+    runs_root = str(tmp_path / "runs")
+    feedback_sent = False
+
+    async def inject_interactions():
+        nonlocal feedback_sent
+        scratch = ScratchDir(runs_root, task_id=tid)
+        for _ in range(400):
+            task = await db.get_task(tid)
+            if task.status == TaskStatus.AWAITING_APPROVAL and not feedback_sent:
+                # Send feedback first
+                await resolve_interaction(
+                    db,
+                    task_id=tid,
+                    answer="make it shorter",
+                    scratch=scratch,
+                )
+                feedback_sent = True
+            elif task.status == TaskStatus.AWAITING_APPROVAL and feedback_sent:
+                # Now approve
+                await resolve_interaction(
+                    db,
+                    task_id=tid,
+                    answer="approve",
+                    scratch=scratch,
+                )
+                return
+            elif task.status in (TaskStatus.DELIVERED, TaskStatus.FAILED):
+                return
+            await asyncio.sleep(0.05)
+        raise TimeoutError("never reached final state in review gate test")
+
+    await asyncio.gather(tm.run_task(tid), inject_interactions())
+
+    task = await db.get_task(tid)
+    assert task.status == TaskStatus.DELIVERED
+
+    events = await db.list_events(tid)
+    kinds = [e.kind for e in events]
+    assert "stage_done" in kinds
+
     await db.close()
 
 
