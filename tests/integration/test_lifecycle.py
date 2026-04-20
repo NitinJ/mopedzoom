@@ -262,15 +262,17 @@ async def test_cli_socket_ops_round_trip(tmp_path):
 
     async def send_op(payload: dict) -> dict:
         r, w = await asyncio.open_unix_connection(str(tmp_path / "sock"))
-        w.write((json.dumps(payload) + "\n").encode())
-        await w.drain()
-        line = await r.readline()
-        w.close()
         try:
-            await w.wait_closed()
-        except Exception:
-            pass
-        return json.loads(line.decode())
+            w.write((json.dumps(payload) + "\n").encode())
+            await w.drain()
+            line = await r.readline()
+            return json.loads(line.decode())
+        finally:
+            w.close()
+            try:
+                await w.wait_closed()
+            except (RuntimeError, BrokenPipeError):
+                pass
 
     # list tasks
     resp = await send_op({"op": "tasks"})
