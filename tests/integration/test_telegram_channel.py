@@ -223,6 +223,22 @@ async def test_telegram_approval_button_resolves_interaction(bot_and_channel, tm
 
 
 @pytest.mark.asyncio
+async def test_telegram_post_uses_bound_thread_in_header_mode():
+    """In header mode, post() still uses the bound thread_id."""
+    bot = FakeBot()
+    channel = TelegramChannel(
+        bot_token="fake-token",
+        chat_id=-100123,
+        mode="header",
+        _bot=bot,
+        _app=MagicMock(),
+    )
+    channel.bind_task_topic(task_id=1, thread_id=99, playbook_id="x", repo="x")
+    await channel.post(OutboundMessage(task_id=1, body="hello"))
+    assert bot.sent_messages[0]["thread_id"] == 99
+
+
+@pytest.mark.asyncio
 async def test_telegram_post_sends_to_bound_topic(bot_and_channel):
     """create_topic + bind_task_topic + post sends message to the right thread."""
     bot, channel = bot_and_channel

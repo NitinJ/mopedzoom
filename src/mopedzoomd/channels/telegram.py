@@ -77,7 +77,7 @@ class TelegramChannel(Channel):
                 ]
             ]
             kb = InlineKeyboardMarkup(rows)
-        thread_id = tb.thread_id if (tb and self.mode == "topics") else None
+        thread_id = tb.thread_id if tb else None
         if msg.document_path is not None:
             sent = await self._bot.send_document(
                 chat_id=self.chat_id,
