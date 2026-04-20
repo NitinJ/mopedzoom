@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import yaml
 from collections.abc import Callable
 from pathlib import Path
 
@@ -7,20 +9,36 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from ..playbooks import Playbook
+from ..playbooks import Playbook, StageSpec
 from ..state import StateDB
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+def _stages_for_template(pb: Playbook) -> list[dict]:
+    result = []
+    for i, s in enumerate(pb.stages):
+        produces = s.produces if isinstance(s.produces, str) else ", ".join(s.produces)
+        result.append({
+            "idx": i,
+            "name": s.name,
+            "requires": s.requires,
+            "produces": produces,
+            "approval": s.approval,
+        })
+    return result
 
 
 def create_app(
     db: StateDB,
     playbook_registry: dict[str, Playbook] | None = None,
     agent_discoverer: Callable[[], list[str]] | None = None,
+    user_playbooks_dir: Path | None = None,
 ) -> FastAPI:
     app = FastAPI()
     registry = playbook_registry or {}
     discover = agent_discoverer or (lambda: [])
+    user_dir = user_playbooks_dir or (Path.home() / ".mopedzoom" / "playbooks")
 
     @app.get("/", response_class=HTMLResponse)
     async def index(req: Request):
