@@ -101,7 +101,7 @@ Stages are submitted in index order. Indices may be non-contiguous (from JS add/
 - `triggers`: zero or more; each trigger stripped and lowercased; empty strings filtered
 - At least one stage required
 - Each stage: `name` non-empty, `requires` non-empty, `produces` non-empty
-- `approval` must be one of: `required`, `on-completion`, `on-failure`, `none`
+- `approval` must be one of: `required`, `on-completion`, `on-failure`, `none`, `review`
 - `produces`: stored as a single string. If the existing stage had a list value, it is joined with `, ` for display and split by `,` on save (trimming whitespace). This covers all current built-in playbooks which use single-string produces values.
 
 Validation failures re-render the edit form fragment with a red error banner at the top. No page navigation occurs.
@@ -129,7 +129,7 @@ Inline edit form `<tr colspan=5>`. Contains:
 - Stage name: `<input name="stage_{i}_name">` (monospace, editable)
 - Requires: `<textarea name="stage_{i}_requires" rows="2">`
 - Produces: `<input name="stage_{i}_produces">`
-- Approval: `<select name="stage_{i}_approval">` with options required / on-completion / on-failure / none
+- Approval: `<select name="stage_{i}_approval">` with options required / on-completion / on-failure / none / review
 - Remove button (✕): client-side JS removes the card from the DOM and re-indexes remaining cards
 
 **"+ Add Stage" button:** client-side JS appends a blank stage card using an inline JS template; new stages get the next available index.

@@ -9,7 +9,7 @@ Ask the user for:
 - **triggers** (comma-separated keywords for the router)
 - whether a **worktree** is required
 - default **permission_mode** (`bypass` / `ask` / `allowlist`)
-- **stages**, for each: name, `requires` template, `produces`, `approval` (`required`/`on-completion`/`on-failure`/`none`), optional `agent`, optional `timeout`.
+- **stages**, for each: name, `requires` template, `produces`, `approval` (`required`/`on-completion`/`on-failure`/`none`/`review`), optional `agent`, optional `timeout`.
 
 Validate the result by constructing `mopedzoomd.playbooks.Playbook(**data)` (pydantic raises on invalid shape). Then write the YAML to `~/.mopedzoom/playbooks/<id>.yaml`.
 
