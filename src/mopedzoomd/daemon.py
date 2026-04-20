@@ -390,10 +390,20 @@ class TaskManager:
             scratch.clear_approval()
 
         if q is not None:
+            # Support both {"prompt": "..."} and {"questions": [...], "context": "..."} formats.
+            if "prompt" in q:
+                question_text = q["prompt"]
+            elif "questions" in q:
+                lines = [q.get("context", "")]
+                for item in q["questions"]:
+                    lines.append(f"  • {item.get('text', str(item))}")
+                question_text = "\n".join(filter(None, lines))
+            else:
+                question_text = str(q)
             ref = await channel.post(
                 OutboundMessage(
                     task_id=task_id,
-                    body=f"\u2753 {sspec.name}: {q.get('prompt', '?')}",
+                    body=f"\u2753 {sspec.name}:\n{question_text}",
                 )
             )
             await self.db.insert_interaction(
@@ -401,7 +411,7 @@ class TaskManager:
                     task_id=task_id,
                     stage_idx=idx,
                     kind=InteractionKind.QUESTION,
-                    prompt=q.get("prompt", ""),
+                    prompt=question_text,
                     posted_to_channel_ref=ref,
                 )
             )
@@ -481,7 +491,9 @@ class TaskManager:
             f'"artifacts": [{{"path": "<relative-path>", "kind": "<kind>"}}], '
             f'"notes": "<one-line summary>"}}\n'
             f"\n"
-            f"To pause for user input, write {scratch.dir}/question.json and exit.\n"
+            f"To pause for user input, write {scratch.dir}/question.json with the format "
+            f'{{"prompt": "Your question here"}} and exit WITHOUT writing the deliverable manifest. '
+            f"Writing question.json means the stage is NOT complete — do not write both.\n"
             f"{research_instruction}"
         )
 
@@ -533,7 +545,9 @@ class _StageFailed(Exception):
     """Internal signal: stage failed, abort task."""
 
 
-async def resolve_interaction(db: StateDB, *, task_id: int, answer: str) -> None:
+async def resolve_interaction(
+    db: StateDB, *, task_id: int, answer: str, scratch: ScratchDir | None = None
+) -> None:
     """Called by channels when the user clicks an approval button or sends a reply."""
     pend = await db.list_pending_interactions(task_id)
     if not pend:
@@ -550,7 +564,21 @@ async def resolve_interaction(db: StateDB, *, task_id: int, answer: str) -> None
         await db.set_task_status(task_id, TaskStatus.PAUSED)
     elif answer == "resume":
         await db.set_task_status(task_id, TaskStatus.RUNNING)
-    await db.log_event(TaskEvent(task_id=task_id, kind=f"resolved_{answer}", detail={}))
+    else:
+        # Free-text: store as question answer or revision feedback
+        if scratch is not None:
+            if i.kind == InteractionKind.QUESTION:
+                scratch.write_answer(i.stage_idx, answer)
+            elif i.kind == InteractionKind.REVISION:
+                scratch.append_feedback(i.stage_idx, answer)
+        await db.set_task_status(task_id, TaskStatus.AWAITING_INPUT)
+    await db.log_event(
+        TaskEvent(
+            task_id=task_id,
+            kind="resolved_interaction",
+            detail={"answer": answer[:100]},
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
