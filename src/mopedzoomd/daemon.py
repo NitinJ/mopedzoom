@@ -547,14 +547,21 @@ class TaskManager:
         if not artifact_path.exists():
             raise _StageFailed(f"Deliverable artifact not found on disk: {artifact_path}")
 
-        ref = await channel.post(
-            OutboundMessage(
-                body=f"\U0001f4c4 {stage.name} \u2014 reply with feedback, or click Approve",
-                task_id=task_id,
-                buttons=[ApprovalButton(callback="approve", label="\u2713 Approve")],
-                document_path=artifact_path,
-            )
+        outbound_msg = OutboundMessage(
+            body=f"\U0001f4c4 {stage.name} \u2014 reply with feedback, or click Approve",
+            task_id=task_id,
+            buttons=[ApprovalButton(callback="approve", label="\u2713 Approve")],
+            document_path=artifact_path,
         )
+        try:
+            ref = await channel.post(outbound_msg)
+        except Exception as e:
+            try:
+                ref = await channel.post(outbound_msg)
+            except Exception as e2:
+                raise _StageFailed(
+                    f"Failed to post deliverable for review after retry: {e2}"
+                ) from e2
         await self.db.insert_interaction(
             Interaction(
                 task_id=task_id,

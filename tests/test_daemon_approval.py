@@ -488,3 +488,107 @@ async def test_await_review_artifact_path_traversal_raises_stage_failed(tmp_path
 # Fix 6: retry on send_document failure
 # ---------------------------------------------------------------------------
 
+
+async def test_await_review_post_retries_once_then_fails(tmp_path):
+    """_await_review should raise _StageFailed after channel.post fails twice."""
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    tid = await db.insert_task(Task(channel="telegram", user_ref="u", playbook_id="p", inputs={}))
+    await db.set_task_status(tid, TaskStatus.RUNNING)
+
+    tm = _make_task_manager(tmp_path, db)
+    scratch = ScratchDir(str(tmp_path / "runs"), task_id=tid)
+    scratch.create()
+
+    artifact_file = scratch.dir / "brief.md"
+    artifact_file.write_text("# Brief content")
+    scratch.write_deliverable(0, "pre-brief", "done", [{"path": "brief.md", "kind": "markdown"}])
+
+    sspec, idx = _make_stage_spec(0)
+
+    # Channel.post raises every call
+    channel = tm.channels["telegram"]
+    channel.post = AsyncMock(side_effect=RuntimeError("network error"))
+
+    with pytest.raises(_StageFailed, match="Failed to post deliverable for review after retry"):
+        await tm._await_review(
+            task_id=tid,
+            stage=sspec,
+            idx=idx,
+            scratch=scratch,
+            channel=channel,
+        )
+
+    assert channel.post.call_count == 2
+
+    await db.close()
+
+
+async def test_await_review_post_retry_succeeds_on_second_attempt(tmp_path):
+    """_await_review should succeed when channel.post fails once then succeeds."""
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    tid = await db.insert_task(Task(channel="telegram", user_ref="u", playbook_id="p", inputs={}))
+    await db.set_task_status(tid, TaskStatus.RUNNING)
+
+    tm = _make_task_manager(tmp_path, db)
+    scratch = ScratchDir(str(tmp_path / "runs"), task_id=tid)
+    scratch.create()
+
+    artifact_file = scratch.dir / "brief.md"
+    artifact_file.write_text("# Brief content")
+    scratch.write_deliverable(0, "pre-brief", "done", [{"path": "brief.md", "kind": "markdown"}])
+
+    sspec, idx = _make_stage_spec(0)
+
+    channel = tm.channels["telegram"]
+    call_count_post = 0
+
+    async def post_once_fail(msg):
+        nonlocal call_count_post
+        call_count_post += 1
+        if call_count_post == 1:
+            raise RuntimeError("transient error")
+        return "tg:1:0:42"
+
+    channel.post = post_once_fail
+
+    # Patch list_pending_interactions to immediately resolve so poll loop exits
+    original_list_pending = db.list_pending_interactions
+    poll_count = 0
+
+    async def fake_list_pending(task_id):
+        nonlocal poll_count
+        poll_count += 1
+        if poll_count == 1:
+            result = await original_list_pending(task_id)
+            for i in result:
+                await db.resolve_interaction(i.id)
+            await db.set_task_status(task_id, TaskStatus.RUNNING)
+            return []
+        return []
+
+    db.list_pending_interactions = fake_list_pending
+
+    # Should not raise
+    await tm._await_review(
+        task_id=tid,
+        stage=sspec,
+        idx=idx,
+        scratch=scratch,
+        channel=channel,
+    )
+
+    assert call_count_post == 2
+
+    await db.close()
+
+
+# ---------------------------------------------------------------------------
+# Fix 8: CANCELLED path in _await_review
+# ---------------------------------------------------------------------------
+
