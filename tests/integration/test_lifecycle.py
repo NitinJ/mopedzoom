@@ -276,6 +276,7 @@ async def test_cli_socket_ops_round_trip(tmp_path):
 
     # list tasks
     resp = await send_op({"op": "tasks"})
+    assert resp["ack"] is True
     assert resp["ok"] is True
     assert len(resp["tasks"]) == 2
 
