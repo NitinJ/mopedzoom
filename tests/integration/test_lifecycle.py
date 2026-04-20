@@ -226,3 +226,75 @@ echo "session-id: sess-fail"
     stages = await db.get_stages(tid)
     assert stages[0].status in (StageStatus.DONE, StageStatus.FAILED)
     await db.close()
+
+
+async def test_cli_socket_ops_round_trip(tmp_path):
+    """Real socket send/receive for status, cancel, resume ops via CLISocketChannel."""
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    pb = Playbook(
+        id="dummy",
+        summary="dummy",
+        triggers=["dummy"],
+        stages=[StageSpec(name="impl", requires="r", produces="x.md", approval="none")],
+    )
+    ch = CLISocketChannel(str(tmp_path / "sock"))
+    await ch.start()
+    ch.set_handler(AsyncMock())
+    ch.set_op_handler(
+        build_cli_op_handler(
+            TaskManager(
+                db=db,
+                runs_root=str(tmp_path / "runs"),
+                stage_runner=StageRunner(),
+                playbook_registry={"dummy": pb},
+                channels={"cli": ch},
+                worktree_mgr=None,
+                agent_discoverer=lambda: [],
+            )
+        )
+    )
+
+    t1 = await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="dummy", inputs={}))
+    t2 = await db.insert_task(Task(channel="cli", user_ref="u", playbook_id="dummy", inputs={}))
+
+    async def send_op(payload: dict) -> dict:
+        r, w = await asyncio.open_unix_connection(str(tmp_path / "sock"))
+        w.write((json.dumps(payload) + "\n").encode())
+        await w.drain()
+        line = await r.readline()
+        w.close()
+        try:
+            await w.wait_closed()
+        except Exception:
+            pass
+        return json.loads(line.decode())
+
+    # list tasks
+    resp = await send_op({"op": "tasks"})
+    assert resp["ok"] is True
+    assert len(resp["tasks"]) == 2
+
+    # get status
+    resp = await send_op({"op": "status", "id": t1})
+    assert resp["ok"] is True
+    assert resp["id"] == t1
+    assert "status" in resp
+
+    # cancel task 1
+    resp = await send_op({"op": "cancel", "id": t1})
+    assert resp["ok"] is True
+    task = await db.get_task(t1)
+    assert task.status == TaskStatus.CANCELLED
+
+    # resume task 2 (set to PAUSED first so resume is valid)
+    await db.set_task_status(t2, TaskStatus.PAUSED)
+    resp = await send_op({"op": "resume", "id": t2})
+    assert resp["ok"] is True
+    task = await db.get_task(t2)
+    assert task.status == TaskStatus.RUNNING
+
+    await ch.stop()
+    await db.close()
