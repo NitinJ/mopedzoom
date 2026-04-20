@@ -450,3 +450,41 @@ async def test_await_review_unexpected_status_raises_runtime_error(tmp_path):
 # Fix 5: path traversal test
 # ---------------------------------------------------------------------------
 
+
+async def test_await_review_artifact_path_traversal_raises_stage_failed(tmp_path):
+    """_await_review should raise _StageFailed when artifact path escapes scratch dir."""
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    tid = await db.insert_task(Task(channel="telegram", user_ref="u", playbook_id="p", inputs={}))
+    await db.set_task_status(tid, TaskStatus.RUNNING)
+
+    tm = _make_task_manager(tmp_path, db)
+    scratch = ScratchDir(str(tmp_path / "runs"), task_id=tid)
+    scratch.create()
+
+    # Write manifest with a path traversal attempt
+    scratch.write_deliverable(
+        0, "pre-brief", "done", [{"path": "../../../etc/passwd", "kind": "text"}]
+    )
+
+    sspec, idx = _make_stage_spec(0)
+    channel = tm.channels["telegram"]
+
+    with pytest.raises(_StageFailed, match="escapes scratch dir"):
+        await tm._await_review(
+            task_id=tid,
+            stage=sspec,
+            idx=idx,
+            scratch=scratch,
+            channel=channel,
+        )
+
+    await db.close()
+
+
+# ---------------------------------------------------------------------------
+# Fix 6: retry on send_document failure
+# ---------------------------------------------------------------------------
+

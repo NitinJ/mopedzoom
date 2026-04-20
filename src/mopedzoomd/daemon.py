@@ -540,7 +540,10 @@ class TaskManager:
         if not manifest or not manifest.get("artifacts"):
             raise _StageFailed("No deliverable to review")
         artifact_rel = manifest["artifacts"][0]["path"]
-        artifact_path = scratch.dir / artifact_rel
+        scratch_root = scratch.dir.resolve()
+        artifact_path = (scratch.dir / artifact_rel).resolve()
+        if scratch_root != artifact_path and scratch_root not in artifact_path.parents:
+            raise _StageFailed(f"Artifact path escapes scratch dir: {artifact_rel}")
         if not artifact_path.exists():
             raise _StageFailed(f"Deliverable artifact not found on disk: {artifact_path}")
 
