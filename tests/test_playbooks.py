@@ -1,6 +1,9 @@
 from pathlib import Path
 
-from mopedzoomd.playbooks import Playbook, load_playbooks, resolve_playbook
+import pytest
+from pydantic import ValidationError
+
+from mopedzoomd.playbooks import Playbook, StageSpec, load_playbooks, resolve_playbook
 
 FIX = Path(__file__).parent / "fixtures" / "playbooks"
 
@@ -27,3 +30,23 @@ def test_resolve_by_trigger():
     reg = load_playbooks(builtin_dir=FIX, user_dir=None)
     match = resolve_playbook("please run a sample task", reg)
     assert match is not None and match.id == "sample"
+
+
+def test_stage_spec_approval_review_is_valid():
+    s = StageSpec(
+        name="pre-brief",
+        requires="scope the topic",
+        produces="pre-brief.md",
+        approval="review",
+    )
+    assert s.approval == "review"
+
+
+def test_stage_spec_approval_invalid_value_rejected():
+    with pytest.raises(ValidationError):
+        StageSpec(
+            name="x",
+            requires="r",
+            produces="p.md",
+            approval="not-a-real-value",
+        )

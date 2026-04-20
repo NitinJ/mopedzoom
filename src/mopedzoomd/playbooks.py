@@ -19,7 +19,7 @@ class StageSpec(BaseModel):
     name: str
     requires: str
     produces: str | list[str]
-    approval: Literal["required", "on-completion", "on-failure", "none"] = "required"
+    approval: Literal["required", "on-completion", "on-failure", "none", "review"] = "required"
     agent: str | None = None
     permission_mode: Literal["bypass", "ask", "allowlist"] | None = None
     timeout: str | None = None
