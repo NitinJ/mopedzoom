@@ -125,7 +125,7 @@ def create_app(
                 errors.append(f"Stage '{name}': requires prompt cannot be empty")
             if not produces_raw:
                 errors.append(f"Stage '{name}': produces cannot be empty")
-            if approval not in ("required", "on-completion", "on-failure", "none"):
+            if approval not in ("required", "on-completion", "on-failure", "none", "review"):
                 errors.append(f"Stage '{name}': invalid approval value '{approval}'")
 
             produces: str | list[str]
