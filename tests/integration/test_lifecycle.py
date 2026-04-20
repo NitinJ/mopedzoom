@@ -111,6 +111,57 @@ fi
     await db.close()
 
 
+async def test_stage_transition_notifications(fake_claude_variant, tmp_path):
+    """run_task sends starting/complete/delivered notifications via channel."""
+    fake_claude_variant(
+        """
+echo "session-id: sess-notif"
+scratch="$MOPEDZOOM_SCRATCH"
+cat > "$scratch/0-impl.deliverable.json" <<'EOF'
+{"stage":"impl","status":"ok","artifacts":[],"notes":"done"}
+EOF
+"""
+    )
+
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    pb = Playbook(
+        id="notif-test",
+        summary="notification test",
+        triggers=["notif"],
+        stages=[
+            StageSpec(name="impl", requires="do X", produces="impl.md", approval="none"),
+        ],
+    )
+    ch = _RecordingChannel()
+    tm = TaskManager(
+        db=db,
+        runs_root=str(tmp_path / "runs"),
+        stage_runner=StageRunner(),
+        playbook_registry={"notif-test": pb},
+        channels={"cli": ch},
+        worktree_mgr=None,
+        agent_discoverer=lambda: [],
+    )
+
+    tid = await db.insert_task(
+        Task(channel="cli", user_ref="u", playbook_id="notif-test", inputs={})
+    )
+    await tm.run_task(tid)
+
+    task = await db.get_task(tid)
+    assert task.status == TaskStatus.DELIVERED
+
+    bodies = [p.body for p in ch.posts]
+    assert any("starting" in b for b in bodies), f"No 'starting' notification found in: {bodies}"
+    assert any("complete" in b for b in bodies), f"No 'complete' notification found in: {bodies}"
+    assert any("delivered" in b for b in bodies), f"No 'delivered' notification found in: {bodies}"
+
+    await db.close()
+
+
 async def test_question_gate_full_cycle(fake_claude_variant, tmp_path):
     """Agent writes question.json on first run; answer injected; second run delivers."""
     fake_claude_variant(

@@ -309,7 +309,10 @@ class TaskManager:
 
         await self.db.set_task_status(task_id, TaskStatus.DELIVERED)
         await self.db.log_event(TaskEvent(task_id=task_id, kind="task_delivered", detail={}))
-        await channel.post(OutboundMessage(task_id=task_id, body="\U0001f680 delivered"))
+        await channel.post(OutboundMessage(
+            task_id=task_id,
+            body=f"\U0001f389 <b>Task #{task_id}</b> \u2014 delivered",
+        ))
 
     async def _run_stage(
         self,
@@ -328,6 +331,10 @@ class TaskManager:
         await self.db.log_event(
             TaskEvent(task_id=task_id, kind="stage_started", detail={"stage": sspec.name})
         )
+        await channel.post(OutboundMessage(
+            task_id=task_id,
+            body=f"\u25b6\ufe0f <b>Stage {idx+1}: {sspec.name}</b> \u2014 starting",
+        ))
         agents = self.agent_discoverer()
         if sspec.agent:
             agents = [sspec.agent]
@@ -367,7 +374,7 @@ class TaskManager:
             await channel.post(
                 OutboundMessage(
                     task_id=task_id,
-                    body=f"Stage {sspec.name} failed: no agents available",
+                    body=f"\u274c <b>Stage {idx+1}: {sspec.name}</b> \u2014 failed (no agents available)",
                 )
             )
             raise _StageFailed() from exc
@@ -439,7 +446,6 @@ class TaskManager:
         )
         if result.exit_code != 0 or not result.deliverable:
             await self.db.set_task_status(task_id, TaskStatus.FAILED)
-            await channel.post(OutboundMessage(task_id=task_id, body=f"Stage {sspec.name} failed"))
             await self.db.log_event(
                 TaskEvent(
                     task_id=task_id,
@@ -447,6 +453,10 @@ class TaskManager:
                     detail={"stage": sspec.name},
                 )
             )
+            await channel.post(OutboundMessage(
+                task_id=task_id,
+                body=f"\u274c <b>Stage {idx+1}: {sspec.name}</b> \u2014 failed",
+            ))
             raise _StageFailed()
         if sspec.approval in ("required", "on-completion"):
             await self._await_approval(task_id, idx, sspec, result, channel)
@@ -464,6 +474,10 @@ class TaskManager:
         await self.db.log_event(
             TaskEvent(task_id=task_id, kind="stage_done", detail={"stage": sspec.name})
         )
+        await channel.post(OutboundMessage(
+            task_id=task_id,
+            body=f"\u2705 <b>Stage {idx+1}: {sspec.name}</b> \u2014 complete",
+        ))
         return session_id
 
     def _build_prompt(self, pb, sspec, task, scratch: ScratchDir, idx: int) -> str:
