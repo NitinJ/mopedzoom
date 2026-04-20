@@ -77,3 +77,32 @@ class ScratchDir:
         p = self.dir / "permission.json"
         if p.exists():
             p.unlink()
+
+    def feedback_path(self, idx: int) -> Path:
+        return self.dir / f"{idx}-feedback.json"
+
+    def answer_path(self, idx: int) -> Path:
+        return self.dir / f"{idx}-answer.json"
+
+    def append_feedback(self, idx: int, text: str) -> None:
+        p = self.feedback_path(idx)
+        self.dir.mkdir(parents=True, exist_ok=True)
+        existing = json.loads(p.read_text()) if p.exists() else {"feedbacks": []}
+        existing["feedbacks"].append(text)
+        p.write_text(json.dumps(existing))
+
+    def read_feedback(self, idx: int) -> list[str]:
+        p = self.feedback_path(idx)
+        if not p.exists():
+            return []
+        return json.loads(p.read_text()).get("feedbacks", [])
+
+    def write_answer(self, idx: int, text: str) -> None:
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self.answer_path(idx).write_text(json.dumps({"answer": text}))
+
+    def read_answer(self, idx: int) -> str | None:
+        p = self.answer_path(idx)
+        if not p.exists():
+            return None
+        return json.loads(p.read_text()).get("answer")
