@@ -106,3 +106,72 @@ fi
     assert "stage_done" in kinds
     assert "resolved_approve" in kinds
     await db.close()
+
+
+async def test_question_gate_full_cycle(fake_claude_variant, tmp_path):
+    """Agent writes question.json on first run; answer injected; second run delivers."""
+    fake_claude_variant(
+        """
+echo "session-id: sess-question"
+SENTINEL="$MOPEDZOOM_SCRATCH/first_run_done"
+if [ ! -f "$SENTINEL" ]; then
+    touch "$SENTINEL"
+    cat > "$MOPEDZOOM_SCRATCH/question.json" <<'EOF'
+{"prompt":"Which city?","kind":"free_text"}
+EOF
+    exit 0
+fi
+cat > "$MOPEDZOOM_SCRATCH/0-impl.deliverable.json" <<'EOF'
+{"stage":"impl","status":"ok","artifacts":[],"notes":"done"}
+EOF
+"""
+    )
+
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    pb = Playbook(
+        id="question-test",
+        summary="question gate test",
+        triggers=["q"],
+        stages=[
+            StageSpec(name="impl", requires="do X", produces="impl.md", approval="none"),
+        ],
+    )
+    ch = _RecordingChannel()
+    tm = TaskManager(
+        db=db,
+        runs_root=str(tmp_path / "runs"),
+        stage_runner=StageRunner(),
+        playbook_registry={"question-test": pb},
+        channels={"cli": ch},
+        worktree_mgr=None,
+        agent_discoverer=lambda: [],
+    )
+
+    tid = await db.insert_task(
+        Task(channel="cli", user_ref="u", playbook_id="question-test", inputs={})
+    )
+
+    async def inject_answer():
+        for _ in range(200):
+            task = await db.get_task(tid)
+            if task.status == TaskStatus.AWAITING_INPUT:
+                await resolve_interaction(db, task_id=tid, answer="Paris")
+                return
+            await asyncio.sleep(0.05)
+        raise TimeoutError("never reached AWAITING_INPUT")
+
+    await asyncio.gather(tm.run_task(tid), inject_answer())
+
+    task = await db.get_task(tid)
+    assert task.status == TaskStatus.DELIVERED
+
+    bodies = [p.body for p in ch.posts]
+    assert any("Which city?" in b for b in bodies)
+
+    events = await db.list_events(tid)
+    kinds = [e.kind for e in events]
+    assert "stage_done" in kinds
+    await db.close()
