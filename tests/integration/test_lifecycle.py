@@ -5,11 +5,13 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 
 from mopedzoomd.channels.base import Channel, OutboundMessage
-from mopedzoomd.daemon import TaskManager, resolve_interaction
+from mopedzoomd.channels.cli_socket import CLISocketChannel
+from mopedzoomd.daemon import TaskManager, build_cli_op_handler, resolve_interaction
 from mopedzoomd.models import Interaction, InteractionKind, Task, StageStatus, TaskStatus
 from mopedzoomd.playbooks import Playbook, StageSpec
 from mopedzoomd.stage_runner import StageRunner
@@ -174,4 +176,53 @@ EOF
     events = await db.list_events(tid)
     kinds = [e.kind for e in events]
     assert "stage_done" in kinds
+    await db.close()
+
+
+async def test_stage_failure_no_manifest(fake_claude_variant, tmp_path):
+    """Agent exits 0 but writes no manifest; task ends FAILED with stage_failed event."""
+    fake_claude_variant(
+        """
+echo "session-id: sess-fail"
+# Deliberately write no deliverable manifest.
+"""
+    )
+
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    pb = Playbook(
+        id="fail-test",
+        summary="failure test",
+        triggers=["fail"],
+        stages=[
+            StageSpec(name="impl", requires="do X", produces="x.md", approval="none"),
+        ],
+    )
+    tm = TaskManager(
+        db=db,
+        runs_root=str(tmp_path / "runs"),
+        stage_runner=StageRunner(),
+        playbook_registry={"fail-test": pb},
+        channels={"cli": _RecordingChannel()},
+        worktree_mgr=None,
+        agent_discoverer=lambda: [],
+    )
+
+    tid = await db.insert_task(
+        Task(channel="cli", user_ref="u", playbook_id="fail-test", inputs={})
+    )
+    await tm.run_task(tid)
+
+    task = await db.get_task(tid)
+    assert task.status == TaskStatus.FAILED
+
+    events = await db.list_events(tid)
+    assert any(e.kind == "stage_failed" for e in events)
+
+    # The stage exit code was 0 so DB marks it DONE, but no deliverable was written —
+    # the task is still FAILED and the stage_failed event was emitted.
+    stages = await db.get_stages(tid)
+    assert stages[0].status in (StageStatus.DONE, StageStatus.FAILED)
     await db.close()
