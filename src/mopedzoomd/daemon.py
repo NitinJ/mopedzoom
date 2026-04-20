@@ -538,6 +538,8 @@ class TaskManager:
             raise _StageFailed("No deliverable to review")
         artifact_rel = manifest["artifacts"][0]["path"]
         artifact_path = scratch.dir / artifact_rel
+        if not artifact_path.exists():
+            raise _StageFailed(f"Deliverable artifact not found on disk: {artifact_path}")
 
         ref = await channel.post(
             OutboundMessage(

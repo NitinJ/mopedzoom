@@ -359,3 +359,35 @@ async def test_await_review_missing_deliverable_raises_stage_failed(tmp_path):
             scratch=scratch,
             channel=channel,
         )
+
+
+async def test_await_review_artifact_file_missing_raises_stage_failed(tmp_path):
+    """_await_review should raise _StageFailed when manifest exists but artifact file is missing."""
+    db = StateDB(str(tmp_path / "s.db"))
+    await db.connect()
+    await db.migrate()
+
+    tid = await db.insert_task(Task(channel="telegram", user_ref="u", playbook_id="p", inputs={}))
+    await db.set_task_status(tid, TaskStatus.RUNNING)
+
+    tm = _make_task_manager(tmp_path, db)
+    scratch = ScratchDir(str(tmp_path / "runs"), task_id=tid)
+    scratch.create()
+
+    # Write manifest referencing an artifact that does NOT exist on disk
+    scratch.write_deliverable(0, "pre-brief", "done", [{"path": "brief.md", "kind": "markdown"}])
+    # Intentionally do NOT write scratch.dir / "brief.md"
+
+    sspec, idx = _make_stage_spec(0)
+    channel = tm.channels["telegram"]
+
+    with pytest.raises(_StageFailed):
+        await tm._await_review(
+            task_id=tid,
+            stage=sspec,
+            idx=idx,
+            scratch=scratch,
+            channel=channel,
+        )
+
+    await db.close()
