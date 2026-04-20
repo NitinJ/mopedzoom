@@ -87,3 +87,107 @@ async def test_get_edit_form_unknown_returns_404(editor_client):
     c, _, _ = editor_client
     r = await c.get("/playbooks/nonexistent/edit-form")
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_post_valid_saves_yaml_and_returns_row(editor_client):
+    c, reg, tmp_path = editor_client
+    user_dir = tmp_path / "playbooks"
+    data = {
+        "summary": "Updated summary",
+        "triggers": "research, dig",
+        "stage_0_name": "pre-brief",
+        "stage_0_requires": "Updated scope prompt",
+        "stage_0_produces": "pre-brief.md",
+        "stage_0_approval": "required",
+    }
+    r = await c.post("/playbooks/research", data=data)
+    assert r.status_code == 200
+    assert "Updated summary" in r.text
+    yaml_path = user_dir / "research.yaml"
+    assert yaml_path.exists()
+    assert reg["research"].summary == "Updated summary"
+    assert reg["research"].stages[0].requires == "Updated scope prompt"
+
+
+@pytest.mark.asyncio
+async def test_post_empty_summary_returns_error_form(editor_client):
+    c, _, _ = editor_client
+    data = {
+        "summary": "",
+        "triggers": "research",
+        "stage_0_name": "pre-brief",
+        "stage_0_requires": "Scope it",
+        "stage_0_produces": "pre-brief.md",
+        "stage_0_approval": "required",
+    }
+    r = await c.post("/playbooks/research", data=data)
+    assert r.status_code == 200
+    assert "Summary is required" in r.text
+
+
+@pytest.mark.asyncio
+async def test_post_no_stages_returns_error_form(editor_client):
+    c, _, _ = editor_client
+    data = {"summary": "Good summary", "triggers": "research"}
+    r = await c.post("/playbooks/research", data=data)
+    assert r.status_code == 200
+    assert "at least one stage" in r.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_post_stage_missing_requires_returns_error_form(editor_client):
+    c, _, _ = editor_client
+    data = {
+        "summary": "Good summary",
+        "triggers": "research",
+        "stage_0_name": "pre-brief",
+        "stage_0_requires": "",
+        "stage_0_produces": "pre-brief.md",
+        "stage_0_approval": "required",
+    }
+    r = await c.post("/playbooks/research", data=data)
+    assert r.status_code == 200
+    assert "requires" in r.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_post_triggers_parsed_as_list(editor_client):
+    c, reg, _ = editor_client
+    data = {
+        "summary": "Good summary",
+        "triggers": "research, investigate, look into",
+        "stage_0_name": "pre-brief",
+        "stage_0_requires": "Scope it",
+        "stage_0_produces": "pre-brief.md",
+        "stage_0_approval": "required",
+    }
+    await c.post("/playbooks/research", data=data)
+    assert reg["research"].triggers == ["research", "investigate", "look into"]
+
+
+@pytest.mark.asyncio
+async def test_post_adds_new_stage(editor_client):
+    c, reg, _ = editor_client
+    data = {
+        "summary": "Good summary",
+        "triggers": "research",
+        "stage_0_name": "pre-brief",
+        "stage_0_requires": "Scope it",
+        "stage_0_produces": "pre-brief.md",
+        "stage_0_approval": "required",
+        "stage_1_name": "new-stage",
+        "stage_1_requires": "Do something new",
+        "stage_1_produces": "output.md",
+        "stage_1_approval": "none",
+    }
+    await c.post("/playbooks/research", data=data)
+    assert len(reg["research"].stages) == 2
+    assert reg["research"].stages[1].name == "new-stage"
+
+
+@pytest.mark.asyncio
+async def test_post_unknown_playbook_returns_404(editor_client):
+    c, _, _ = editor_client
+    r = await c.post("/playbooks/nonexistent", data={"summary": "x"})
+    assert r.status_code == 404

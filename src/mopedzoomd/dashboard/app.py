@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import yaml
 from collections.abc import Callable
 from pathlib import Path
 
@@ -7,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from ..playbooks import Playbook
+from ..playbooks import Playbook, StageSpec
 from ..state import StateDB
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -36,6 +38,7 @@ def create_app(
     app = FastAPI()
     registry = playbook_registry or {}
     discover = agent_discoverer or (lambda: [])
+    user_dir = user_playbooks_dir or (Path.home() / ".mopedzoom" / "playbooks")
 
     @app.get("/", response_class=HTMLResponse)
     async def index(req: Request):
@@ -85,6 +88,84 @@ def create_app(
             req,
             "fragment_playbook_edit.html",
             {"pb": pb, "stages_display": stages_display, "errors": []},
+        )
+
+    @app.post("/playbooks/{pb_id}", response_class=HTMLResponse)
+    async def update_playbook(pb_id: str, req: Request):
+        pb = registry.get(pb_id)
+        if pb is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+
+        form = await req.form()
+        summary = str(form.get("summary", "")).strip()
+        triggers_raw = str(form.get("triggers", ""))
+        triggers = [t.strip() for t in triggers_raw.split(",") if t.strip()]
+
+        stage_indices: set[int] = set()
+        for key in form.keys():
+            m = re.match(r"^stage_(\d+)_name$", key)
+            if m:
+                stage_indices.add(int(m.group(1)))
+
+        errors: list[str] = []
+        if not summary:
+            errors.append("Summary is required")
+
+        stages: list[StageSpec] = []
+        for i in sorted(stage_indices):
+            name = str(form.get(f"stage_{i}_name", "")).strip()
+            requires = str(form.get(f"stage_{i}_requires", "")).strip()
+            produces_raw = str(form.get(f"stage_{i}_produces", "")).strip()
+            approval = str(form.get(f"stage_{i}_approval", "required")).strip()
+
+            if not name:
+                continue
+
+            if not requires:
+                errors.append(f"Stage '{name}': requires prompt cannot be empty")
+            if not produces_raw:
+                errors.append(f"Stage '{name}': produces cannot be empty")
+            if approval not in ("required", "on-completion", "on-failure", "none"):
+                errors.append(f"Stage '{name}': invalid approval value '{approval}'")
+
+            produces: str | list[str]
+            if "," in produces_raw:
+                produces = [p.strip() for p in produces_raw.split(",") if p.strip()]
+            else:
+                produces = produces_raw
+
+            stages.append(
+                StageSpec(name=name, requires=requires, produces=produces, approval=approval)
+            )
+
+        if not stages:
+            errors.append("At least one stage is required")
+
+        if errors:
+            stages_display = _stages_for_template(pb)
+            return TEMPLATES.TemplateResponse(
+                req,
+                "fragment_playbook_edit.html",
+                {"pb": pb, "stages_display": stages_display, "errors": errors},
+            )
+
+        updated = pb.model_copy(update={"summary": summary, "triggers": triggers, "stages": stages})
+
+        user_dir.mkdir(parents=True, exist_ok=True)
+        out_path = user_dir / f"{pb_id}.yaml"
+        out_path.write_text(
+            yaml.dump(
+                updated.model_dump(exclude_none=True),
+                default_flow_style=False,
+                sort_keys=False,
+                allow_unicode=True,
+            )
+        )
+
+        registry[pb_id] = updated
+
+        return TEMPLATES.TemplateResponse(
+            req, "fragment_playbook_row.html", {"pb": updated}
         )
 
     @app.get("/health")
