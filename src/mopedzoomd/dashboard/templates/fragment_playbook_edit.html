@@ -53,7 +53,7 @@
               <label style="display:block;font-size:0.7rem;color:#64748b;margin-bottom:3px">Approval</label>
               <select name="stage_{{s.idx}}_approval"
                       style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #334155;color:#94a3b8;padding:4px 8px;border-radius:4px;font-size:0.8rem">
-                {% for opt in ['required','on-completion','on-failure','none'] %}
+                {% for opt in ['required','on-completion','on-failure','none','review'] %}
                 <option value="{{opt}}" {% if s.approval == opt %}selected{% endif %}>{{opt}}</option>
                 {% endfor %}
               </select>
@@ -102,6 +102,7 @@
               <option value="on-completion">on-completion</option>
               <option value="on-failure">on-failure</option>
               <option value="none">none</option>
+              <option value="review">review</option>
             </select>
           </div>
         </div>
