@@ -106,7 +106,7 @@ fi
     events = await db.list_events(tid)
     kinds = [e.kind for e in events]
     assert "stage_done" in kinds
-    assert "resolved_approve" in kinds
+    assert "resolved_interaction" in kinds
     await db.close()
 
 

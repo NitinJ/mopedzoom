@@ -192,7 +192,7 @@ async def test_telegram_approval_button_resolves_interaction(bot_and_channel, tm
     assert task.status == TaskStatus.RUNNING
 
     events = await db.list_events(tid)
-    assert any(e.kind == "resolved_approve" for e in events)
+    assert any(e.kind == "resolved_interaction" for e in events)
 
     await db.close()
 
