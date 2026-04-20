@@ -450,6 +450,14 @@ class TaskManager:
             raise _StageFailed()
         if sspec.approval in ("required", "on-completion"):
             await self._await_approval(task_id, idx, sspec, result, channel)
+        elif sspec.approval == "review":
+            await self._await_review(
+                task_id=task_id,
+                stage=sspec,
+                idx=idx,
+                scratch=scratch,
+                channel=channel,
+            )
         await self.db.log_event(
             TaskEvent(task_id=task_id, kind="stage_done", detail={"stage": sspec.name})
         )
@@ -509,6 +517,58 @@ class TaskManager:
                 prompt += f'\n  - Iteration {i}: "{fb}"'
 
         return prompt
+
+    async def _await_review(
+        self,
+        *,
+        task_id: int,
+        stage,
+        idx: int,
+        scratch: ScratchDir,
+        channel: Channel,
+    ) -> None:
+        """Post the stage deliverable as a file attachment and wait for approval or feedback.
+
+        - If the user clicks Approve: task status transitions to RUNNING → return normally.
+        - If the user sends feedback text: task status transitions to AWAITING_INPUT → raise _RetryStage.
+        - If the task is CANCELLED: raise RuntimeError("task cancelled by user").
+        """
+        manifest = scratch.read_deliverable(idx, stage.name)
+        if not manifest or not manifest.get("artifacts"):
+            raise _StageFailed("No deliverable to review")
+        artifact_rel = manifest["artifacts"][0]["path"]
+        artifact_path = scratch.dir / artifact_rel
+
+        ref = await channel.post(
+            OutboundMessage(
+                body=f"\U0001f4c4 {stage.name} \u2014 reply with feedback, or click Approve",
+                task_id=task_id,
+                buttons=[ApprovalButton(callback="approve", label="\u2713 Approve")],
+                document_path=artifact_path,
+            )
+        )
+        await self.db.insert_interaction(
+            Interaction(
+                task_id=task_id,
+                stage_idx=idx,
+                kind=InteractionKind.REVISION,
+                prompt=f"Review: {stage.name}",
+                posted_to_channel_ref=ref,
+            )
+        )
+        await self.db.set_task_status(task_id, TaskStatus.AWAITING_APPROVAL)
+        while True:
+            pend = await self.db.list_pending_interactions(task_id)
+            if not pend:
+                break
+            await asyncio.sleep(0.2)
+        t = await self.db.get_task(task_id)
+        if t.status == TaskStatus.RUNNING:
+            return
+        if t.status == TaskStatus.AWAITING_INPUT:
+            raise _RetryStage()
+        if t.status == TaskStatus.CANCELLED:
+            raise RuntimeError("task cancelled by user")
 
     async def _await_approval(
         self,
