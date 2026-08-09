@@ -1,11 +1,19 @@
 {
   "name": "mopedzoom",
-  "owner": { "name": "NitinJ" },
+  "owner": { "name": "nitin" },
+  "metadata": {
+    "description": "Always-on Claude-powered task orchestrator.",
+    "version": "1.0.0"
+  },
   "plugins": [
     {
       "name": "mopedzoom",
-      "source": ".",
-      "description": "Always-on Claude task orchestrator (Telegram/CLI -> playbook agents)."
+      "source": "./",
+      "description": "Always-on Claude task orchestrator. Accepts tasks via Telegram or CLI, routes to playbook-driven agents, parallelizes with git worktrees.",
+      "version": "1.0.0",
+      "author": { "name": "nitin" },
+      "keywords": ["orchestrator", "telegram", "daemon", "agents", "worktrees"],
+      "category": "workflow"
     }
   ]
 }

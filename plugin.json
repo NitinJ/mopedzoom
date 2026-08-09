@@ -1,0 +1,27 @@
+{
+  "name": "mopedzoom",
+  "version": "0.1.0",
+  "description": "Always-on Claude-powered task orchestrator driven by Telegram or CLI, with playbooks, git worktrees, approvals, and a local dashboard.",
+  "author": {
+    "name": "nitin",
+    "email": "nitin.jaglan@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": ["orchestrator", "telegram", "daemon", "playbooks", "worktrees"],
+  "commands": [
+    { "name": "init",    "description": "Initialize mopedzoom — Telegram, repos, permissions, systemd" },
+    { "name": "status",  "description": "Show current daemon and task status" },
+    { "name": "submit",  "description": "Submit a new task to the orchestrator" },
+    { "name": "tasks",   "description": "List all tasks" },
+    { "name": "logs",    "description": "Tail daemon or task logs" },
+    { "name": "cancel",  "description": "Cancel a running task" },
+    { "name": "resume",  "description": "Resume a paused task" },
+    { "name": "config",  "description": "View or edit mopedzoom config" },
+    { "name": "edit",    "description": "Edit a task or playbook" },
+    { "name": "ui",      "description": "Open the local dashboard" },
+    { "name": "playbook/list",   "description": "List all playbooks" },
+    { "name": "playbook/new",    "description": "Create a new playbook" },
+    { "name": "playbook/edit",   "description": "Edit a playbook" },
+    { "name": "playbook/delete", "description": "Delete a playbook" }
+  ]
+}

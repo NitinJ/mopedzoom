@@ -1,0 +1,40 @@
+<h2>Where should playbook editing live?</h2>
+<p class="subtitle">Three approaches — pick the one that feels right</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Inline on Playbooks List</h3>
+      <p>Click "Edit" on a row → the row expands in-place to show editable fields. Save collapses it back.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>No navigation needed</li><li>Minimal new pages</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Cramped for multi-stage editing</li><li>Complex htmx state</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Dedicated Edit Page <span style="font-size:0.75rem;color:#4ade80;font-weight:600;background:#052e16;padding:2px 8px;border-radius:4px;margin-left:8px">RECOMMENDED</span></h3>
+      <p>Click "Edit" → navigate to <code>/playbooks/{id}/edit</code> with a full-page form. Save redirects back.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Room for all stage fields</li><li>Matches existing task detail pattern</li><li>Clean, focused editing</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Extra navigation hop</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Modal Dialog</h3>
+      <p>Click "Edit" → a modal slides in over the current page with the form. Save closes the modal.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Stays on the same page</li><li>Feels modern</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Modals are awkward for long forms</li><li>Requires more JS</li><li>Stage editing gets crowded</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

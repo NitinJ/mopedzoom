@@ -4,18 +4,25 @@ import asyncio
 import json
 import os
 from pathlib import Path
+from typing import Awaitable, Callable
 
 from .base import Channel, InboundMessage, OutboundMessage
 
+OpHandler = Callable[[str, dict], Awaitable[dict]]
+
 
 class CLISocketChannel(Channel):
-    def __init__(self, path: str):
+    def __init__(self, path: str, op_handler: OpHandler | None = None):
         self.path = path
         self._server: asyncio.AbstractServer | None = None
         self._handler = None
+        self._op_handler: OpHandler | None = op_handler
 
     def set_handler(self, handler) -> None:
         self._handler = handler
+
+    def set_op_handler(self, op_handler: OpHandler | None) -> None:
+        self._op_handler = op_handler
 
     async def start(self) -> None:
         if os.path.exists(self.path):
@@ -64,10 +71,20 @@ class CLISocketChannel(Channel):
                 "ui",
                 "show-playbook",
             }:
-                # v1: minimal ack; full dispatcher is wired by the daemon.
-                reply["ok"] = True
+                if self._op_handler is not None:
+                    try:
+                        extra = await self._op_handler(op, cmd)
+                    except Exception as exc:  # noqa: BLE001
+                        extra = {"ok": False, "error": str(exc)}
+                    if isinstance(extra, dict):
+                        reply.update(extra)
+                    else:
+                        reply["ok"] = True
+                else:
+                    # No handler wired: preserve legacy stub behavior.
+                    reply["ok"] = True
                 for k in ("id", "stage"):
-                    if k in cmd:
+                    if k in cmd and k not in reply:
                         reply[k] = cmd[k]
             else:
                 reply = {"ack": False, "error": f"unknown op: {op}"}

@@ -242,6 +242,9 @@ class TaskManager:
         if not existing:
             for i, st in enumerate(pb.stages):
                 await self.db.insert_stage(Stage(task_id=task_id, idx=i, name=st.name))
+            existing = await self.db.get_stages(task_id)
+
+        stages_by_idx = {s.idx: s for s in existing}
 
         await self.db.set_task_status(task_id, TaskStatus.RUNNING)
         await self.db.log_event(TaskEvent(task_id=task_id, kind="task_started", detail={}))
@@ -278,9 +281,16 @@ class TaskManager:
                 except Exception as exc:  # noqa: BLE001
                     LOG.exception("worktree create failed for task %s: %s", task_id, exc)
                     # Fall back to scratch cwd (preserves behavior).
+        # Restore session_id from the last completed stage (crash recovery).
         session_id: str | None = None
+        for s in sorted(stages_by_idx.values(), key=lambda x: x.idx):
+            if s.status == StageStatus.DONE and s.session_id:
+                session_id = s.session_id
 
         for idx, sspec in enumerate(pb.stages):
+            stage_db = stages_by_idx.get(idx)
+            if stage_db and stage_db.status == StageStatus.DONE:
+                continue  # already completed; session_id restored above
             while True:
                 try:
                     session_id = await self._run_stage(
@@ -935,6 +945,11 @@ async def build_daemon_from_config(cfg: Config, *, start: bool = True) -> Daemon
     d = Daemon(cfg=cfg, db=db, task_mgr=tm, channels=channels)
     if start:
         await d.start()
+        # Crash recovery: re-spawn tasks that were running when the daemon died.
+        orphaned = await db.list_tasks(statuses=[TaskStatus.RUNNING])
+        for t in orphaned:
+            LOG.warning("crash-recovery: re-spawning task %s", t.id)
+            _spawn_supervised(tm.run_task(t.id), name=f"run_task:{t.id}")
 
     if cfg.limits.sweeper_enabled:
         _spawn_supervised(

@@ -1,0 +1,85 @@
+<h2>Playbook inline editing — mockup</h2>
+<p class="subtitle">How the playbooks table looks when a row is expanded for editing</p>
+
+<div class="mockup">
+  <div class="mockup-header">http://localhost:7777/playbooks</div>
+  <div class="mockup-body" style="padding:0">
+    <div style="padding:1rem 0.5rem">
+      <h3 style="margin:0 0 0.75rem 0.5rem;font-size:1rem">Playbooks</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+        <thead>
+          <tr style="border-bottom:1px solid #334155">
+            <th style="padding:6px 12px;text-align:left;color:#94a3b8;font-weight:500">ID</th>
+            <th style="padding:6px 12px;text-align:left;color:#94a3b8;font-weight:500">Summary</th>
+            <th style="padding:6px 12px;text-align:left;color:#94a3b8;font-weight:500">Triggers</th>
+            <th style="padding:6px 12px;text-align:left;color:#94a3b8;font-weight:500">Stages</th>
+            <th style="padding:6px 12px;text-align:left;color:#94a3b8;font-weight:500"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Normal row -->
+          <tr style="border-bottom:1px solid #1e293b">
+            <td style="padding:6px 12px;color:#60a5fa;font-family:monospace">bug-fix</td>
+            <td style="padding:6px 12px;color:#e2e8f0">Fix a bug in a repo</td>
+            <td style="padding:6px 12px;color:#94a3b8;font-size:0.8rem">fix, bug, broken</td>
+            <td style="padding:6px 12px;color:#94a3b8">3</td>
+            <td style="padding:6px 12px"><button style="font-size:0.75rem;padding:3px 10px;background:#1e3a5f;border:1px solid #3b82f6;color:#93c5fd;border-radius:4px;cursor:pointer">Edit</button></td>
+          </tr>
+
+          <!-- EXPANDED editing row (research) -->
+          <tr style="background:#0f172a;border:1px solid #3b82f6">
+            <td colspan="5" style="padding:1rem 1.25rem">
+              <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
+                <span style="font-family:monospace;color:#60a5fa;font-weight:600">research</span>
+                <span style="font-size:0.7rem;color:#4ade80;background:#052e16;padding:2px 8px;border-radius:4px">editing</span>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+                <div>
+                  <label style="display:block;font-size:0.75rem;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Summary</label>
+                  <input value="Research a topic and produce a markdown report" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:0.85rem;font-family:inherit">
+                </div>
+                <div>
+                  <label style="display:block;font-size:0.75rem;color:#94a3b8;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Triggers (comma-separated)</label>
+                  <input value="research, investigate, look into, dig into" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:0.85rem;font-family:inherit">
+                </div>
+              </div>
+
+              <div style="margin-bottom:0.75rem">
+                <label style="display:block;font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em">Stages</label>
+                <div style="display:flex;flex-direction:column;gap:0.5rem">
+                  <div style="background:#1e293b;border:1px solid #334155;border-radius:4px;padding:0.75rem">
+                    <div style="font-size:0.75rem;color:#60a5fa;margin-bottom:4px;font-family:monospace">0 · pre-brief</div>
+                    <textarea rows="2" style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:0.82rem;font-family:inherit;resize:vertical">Scope the research: sources, depth, key questions</textarea>
+                  </div>
+                  <div style="background:#1e293b;border:1px solid #334155;border-radius:4px;padding:0.75rem">
+                    <div style="font-size:0.75rem;color:#60a5fa;margin-bottom:4px;font-family:monospace">1 · research</div>
+                    <textarea rows="2" style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:0.82rem;font-family:inherit;resize:vertical">Perform the research; produce a detailed markdown report with citations</textarea>
+                  </div>
+                  <div style="background:#1e293b;border:1px solid #334155;border-radius:4px;padding:0.75rem">
+                    <div style="font-size:0.75rem;color:#60a5fa;margin-bottom:4px;font-family:monospace">2 · publish</div>
+                    <textarea rows="2" style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:0.82rem;font-family:inherit;resize:vertical">Commit report to the configured research repo/path</textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+                <button style="font-size:0.8rem;padding:5px 14px;background:transparent;border:1px solid #334155;color:#94a3b8;border-radius:4px;cursor:pointer">Cancel</button>
+                <button style="font-size:0.8rem;padding:5px 14px;background:#166534;border:1px solid #4ade80;color:#4ade80;border-radius:4px;cursor:pointer">Save &amp; Reload</button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Normal row -->
+          <tr style="border-bottom:1px solid #1e293b">
+            <td style="padding:6px 12px;color:#60a5fa;font-family:monospace">feature-impl</td>
+            <td style="padding:6px 12px;color:#e2e8f0">Implement a feature in a repo</td>
+            <td style="padding:6px 12px;color:#94a3b8;font-size:0.8rem">implement, add, build, create</td>
+            <td style="padding:6px 12px;color:#94a3b8">4</td>
+            <td style="padding:6px 12px"><button style="font-size:0.75rem;padding:3px 10px;background:#1e3a5f;border:1px solid #3b82f6;color:#93c5fd;border-radius:4px;cursor:pointer">Edit</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,7 @@
+{"type":"server-started","port":54170,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:54170","screen_dir":"/home/nitin/workspace/mopedzoom/.superpowers/brainstorm/18517-1776671551/content","state_dir":"/home/nitin/workspace/mopedzoom/.superpowers/brainstorm/18517-1776671551/state"}
+{"type":"screen-added","file":"/home/nitin/workspace/mopedzoom/.superpowers/brainstorm/18517-1776671551/content/playbook-edit-approaches.html"}
+{"type":"screen-added","file":"/home/nitin/workspace/mopedzoom/.superpowers/brainstorm/18517-1776671551/content/waiting-1.html"}
+{"type":"screen-added","file":"/home/nitin/workspace/mopedzoom/.superpowers/brainstorm/18517-1776671551/content/inline-edit-mockup.html"}
+{"type":"screen-added","file":"/home/nitin/workspace/mopedzoom/.superpowers/brainstorm/18517-1776671551/content/inline-edit-v2.html"}
+{"type":"screen-added","file":"/home/nitin/workspace/mopedzoom/.superpowers/brainstorm/18517-1776671551/content/waiting-2.html"}
+{"type":"server-stopped","reason":"idle timeout"}

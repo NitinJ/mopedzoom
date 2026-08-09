@@ -27,6 +27,7 @@ class AgentsConfig(BaseModel):
 class PermissionsConfig(BaseModel):
     default_mode: Literal["bypass", "ask", "allowlist"] = "bypass"
     allowlist: list[str] = Field(default_factory=list)
+    mcp_enabled: bool = False
 
 
 class DashboardConfig(BaseModel):
@@ -49,6 +50,8 @@ class LimitsConfig(BaseModel):
     max_concurrent_tasks: int = 4
     default_stage_timeout_s: int = 1800
     grace_period_days: int = 7
+    sweeper_enabled: bool = False
+    sweeper_interval_s: int = 3600
 
 
 class Config(BaseModel):

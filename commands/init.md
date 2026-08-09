@@ -29,7 +29,13 @@ This command is **idempotent**: on re-run, load the existing `~/.mopedzoom/confi
 
 5. **Deliverables** — ask where research reports should be committed. Default: one of the allowlisted repos at `docs/research/`.
 
-6. **Concurrency / timeouts / grace period / dashboard** — offer defaults (concurrency=3, stage timeout=1h, worktree grace=7d, dashboard port=7777 bound to 127.0.0.1) and accept overrides.
+5b. **Metrics, deliverables, and default repo** — ask for:
+   - `metrics.enabled` (bool, default false) and `metrics.port` (default 9877).
+   - `deliverables.research_repo` — which allowlisted repo research reports should be committed to.
+   - `deliverables.research_path` — path inside that repo (default `docs/research/`).
+   - `default_repo` — fallback repo when a task does not specify one.
+
+6. **Concurrency / timeouts / grace period / dashboard** — offer defaults (concurrency=3, stage timeout=30m (default 1800s), worktree grace=7d, dashboard port=9876 bound to 127.0.0.1) and accept overrides.
 
 7. **Verify `gh auth status`.** If not authenticated, instruct the user to run `gh auth login` and retry.
 
@@ -41,3 +47,5 @@ This command is **idempotent**: on re-run, load the existing `~/.mopedzoom/confi
    - Run `systemctl --user enable --now mopedzoomd`.
 
 10. **Verify daemon running** via `systemctl --user status mopedzoomd` and `mopedzoom status`. Report success and print the dashboard URL (`http://127.0.0.1:<port>/`).
+
+Default dashboard port is `9876`.
